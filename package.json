@@ -1,0 +1,33 @@
+{
+  "name": "i18n-migration",
+  "version": "1.0.0",
+  "description": "a tool for migrate to i18n",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Realwate/i18n-migration.git"
+  },
+  "keywords": [
+    "i18n"
+  ],
+  "author": "Realwate",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Realwate/i18n-migration/issues"
+  },
+  "homepage": "https://github.com/Realwate/i18n-migration#readme",
+  "dependencies": {
+    "babel-core": "^6.26.3",
+    "babel-types": "^6.26.0",
+    "fs-extra": "^6.0.1",
+    "glob": "^7.1.2",
+    "recast": "^0.15.0",
+    "rimraf": "^2.6.2"
+  }
+}
