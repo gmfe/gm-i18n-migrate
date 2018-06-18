@@ -25,7 +25,7 @@ function transform(filename, transformPlugin) {
             generator: recast.print,
         },
         plugins: [transformPlugin],
-        sourceMaps: true,
+        // sourceMaps: true,
         });
     return result.code;
 }

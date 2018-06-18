@@ -2,20 +2,17 @@ const glob = require('glob');
 const fs = require('fs-extra');
 const p = require('path');
 const visitor = require('./visitor')
+let expressionTraverse = require('./core/ExpressionTraverse')
 let log = console.log.bind(console);
+let config = require('./config')
 
-let config = {
-    targetDir: p.join(__dirname,'resources'),
-    exclude: [],
-}
+const {resourceDir,outputDir,exclude} = config;
 
-const targetDir = config.targetDir;
-const exclude = config.exclude;
 /* 基本思路
 // 源字符串
 let s = `你好，${name}。欢迎来到${where}`
 
-// name where这些变量名怎么确定？
+// name where这些变量名确定
 let s = '你好，' + users[0].name + '。欢迎来到' + where.name
 
 // 替换
@@ -38,83 +35,102 @@ enMap = {
 }
 */
 
-let defaultKeyStrategy = (()=>{
-    let counter = 1;
-    return ({sourceString,filePath,meta})=>{
-        return counter++;
+
+function getOutputDir(filePath) {
+    filePath = filePath.split(p.sep).slice(-2, -1);
+    return p.join(outputDir, ...filePath)
+}
+
+function getTransformFilePath(filePath) {
+    let filaname = filePath.split('/').slice(-1);
+    return p.join(getOutputDir(filePath), ...filaname)
+}
+
+function getResourceFilePath(filaname){
+    return p.join(resourceDir, filaname)
+}
+
+
+function write(filePath, content,type) {
+    if(!type && !config.rewrite){
+        filePath = getTransformFilePath(filePath)
     }
-})()
-
-let defaultVariableStrategy = (()=>{
-    let counter = 1;
-    return ({identifier,filePath,meta})=>{
-        return counter++;
-    }
-})()
-
-function getOutputDir(filename){
-    let filePath = filename.split(p.sep).slice(-2,-1);
-    return p.join(targetDir,...filePath)
-}
-
-function getOutputPath(filePath){
-    let filaname = filePath.split(p.sep).slice(-1);
-    return p.join(getOutputDir(filePath),...filaname)
-}
-
-function write(filePath,content){
-    let dir = getOutputDir(filePath);
-    fs.ensureDirSync(dir);
-    fs.writeFileSync(getOutputPath(filePath),content,{encoding:'utf-8'});
-}
-
-function run(path) {
-    glob(`${path}/**/*.{js,jsx}`, { ignore: exclude.map(pattern=>`${path}/${pattern}`) }, async (err, files) => {
-        if(err){
-            throw err;
-        }
-        let start = Date.now();
-
-        fs.removeSync(targetDir);
-        fs.ensureDirSync(targetDir);
-
-        files.forEach((filename,i) => {
-            const {transform} = require('./transformer')
-            const code = transform(filename,scan)
-            write(filename,code);
-
-        });
-        let end = Date.now();
-        let spend = ((end - start)/1000).toFixed(2);
-        log(`执行完毕！时间：${spend}s`)
+   
+    fs.outputFileSync(filePath, content, {
+        encoding: 'utf-8'
     });
 }
 
-function scan({types:t}){
-  return {
-      visitor: {
-       ...visitor
-      }
-  }
+function run(path) {
+    glob(`${path}/**/*.{js,jsx}`, {
+            ignore: exclude.map(pattern => `${path}/${pattern}`)
+        },
+        async (err, files) => {
+            if (err) {
+                throw err;
+            }
+            let start = Date.now();
+            fs.removeSync(outputDir);
+
+            files.forEach((filePath, i) => {
+                if (filePath.includes('comp')) {
+                    return;
+                }
+
+                const {
+                    transform
+                } = require('./core/transformer')
+                const code = transform(filePath, scan)
+                // 文件更新替换为 i18n.get 
+                write(filePath, code);
+
+            });
+            // 资源文件
+            let {
+                resourceContent
+            } = expressionTraverse;
+            write(getResourceFilePath('cn.json'),resourceContent,'resource')
+            let end = Date.now();
+            let spend = ((end - start) / 1000).toFixed(2);
+            log(`执行完毕！时间：${spend}s`)
+        });
+}
+
+function scan({
+    types: t
+}) {
+    return {
+        visitor: {
+            ...visitor
+        }
+    }
 }
 
 
 // 参考1
-function scan2({ types: t }) {
+function scan2({
+    types: t
+}) {
     return {
         visitor: {
             JSXAttribute(path) {
-                const { node } = path;
+                const {
+                    node
+                } = path;
                 if (node.name.name !== 'defaultMessage' && path.node.value) {
                     detectChinese(node.value.value, path, 'jsx', 'JSXAttribute');
                 }
             },
             JSXText(path) {
-                const { node } = path;
+                const {
+                    node
+                } = path;
                 detectChinese(node.value, path, 'jsx', 'JSXText');
             },
-            JSXExpressionContainer(path){
-                const { node } = path;
+            JSXExpressionContainer(path) {
+                const {
+                    node
+                } = path;
             },
             AssignmentExpression(path) {
                 detectChinese(path.node.right.value, path, 'text', 'AssignmentExpression');
@@ -125,13 +141,15 @@ function scan2({ types: t }) {
             ArrayExpression(path) {
                 path.node.elements.forEach(item => {
                     if (item.value) {
-                        detectChinese(item.value, Object.assign({}, path, {node: item}), 'text', 'ArrayExpression');
+                        detectChinese(item.value, Object.assign({}, path, {
+                            node: item
+                        }), 'text', 'ArrayExpression');
                     }
                 })
             },
             // 新增：new Person('小红')
             NewExpression(path) {
-                path.node.arguments.forEach(item =>{
+                path.node.arguments.forEach(item => {
                     detectChinese(item && item.value, path, 'text', 'NewExpression');
                 });
             },
@@ -146,7 +164,7 @@ function scan2({ types: t }) {
                     }
                 }
 
-                path.node.arguments.forEach(item =>{
+                path.node.arguments.forEach(item => {
                     detectChinese(item && item.value, path, 'text', 'CallExpression');
                 });
             },
@@ -163,63 +181,79 @@ function scan2({ types: t }) {
 
 // 参考2
 function pick(babel) {
-    const { types: t } = babel;
+    const {
+        types: t
+    } = babel;
     const deal = {}
+
     function detectChinese(text) {
-      return /[\u4e00-\u9fa5]/.test(text);
+        return /[\u4e00-\u9fa5]/.test(text);
     }
+
     function makeReplace(value) {
-      return t.CallExpression(t.MemberExpression(t.Identifier("intl"), t.Identifier("get")), [
-        t.StringLiteral(value)
-      ]);
+        return t.CallExpression(t.MemberExpression(t.Identifier("intl"), t.Identifier("get")), [
+            t.StringLiteral(value)
+        ]);
     }
     return {
-      name: "youhua-transform", // not required
-      visitor: {
-        JSXText(path) {
-          const { node } = path;
-          if (detectChinese(node.value)) {
-            path.replaceWith(
-              t.JSXExpressionContainer(makeReplace(node.value.trim().replace(/\n\s+/g, "\n")))
-            );
-          }
-        },
-        StringLiteral(path) {
-          const { node } = path;
-          const { value } = node;
-          if (detectChinese(value)) {
-            if (path.parent.type === "CallExpression") {
-              if (
-                path.parent.callee.type === "MemberExpression" &&
-                path.parent.callee.object.name === "intl"
-              ) {
-                return;
-              }
-              path.replaceWithSourceString(`intl.get('${value}')`);
+        name: "youhua-transform", // not required
+        visitor: {
+            JSXText(path) {
+                const {
+                    node
+                } = path;
+                if (detectChinese(node.value)) {
+                    path.replaceWith(
+                        t.JSXExpressionContainer(makeReplace(node.value.trim().replace(/\n\s+/g, "\n")))
+                    );
+                }
+            },
+            StringLiteral(path) {
+                const {
+                    node
+                } = path;
+                const {
+                    value
+                } = node;
+                if (detectChinese(value)) {
+                    if (path.parent.type === "CallExpression") {
+                        if (
+                            path.parent.callee.type === "MemberExpression" &&
+                            path.parent.callee.object.name === "intl"
+                        ) {
+                            return;
+                        }
+                        path.replaceWithSourceString(`intl.get('${value}')`);
+                    }
+                    if (path.parent.type === "JSXAttribute") {
+                        path.replaceWith(t.JSXExpressionContainer(makeReplace(value.trim())));
+                    } else {
+                        path.replaceWithSourceString(`intl.get('${value}')`);
+                    }
+                }
+            },
+            TemplateLiteral(path) {
+                const {
+                    node
+                } = path;
+                if (!node.loc) {
+                    return
+                };
+                const location = `${path.hub.file.log.filename}#${node.loc.start.line}#${node.loc.start.column}`;
+                if (deal[location]) {
+                    return
+                }
+                //const source = recast.print(path.node,{quote:'single'}).code.replace(/([\u4e00-\u9fa5]+)/g,"${intl.get('$1')}");
+                //path.replaceWithSourceString(source);
+                deal[location] = true;
             }
-            if (path.parent.type === "JSXAttribute") {
-              path.replaceWith(t.JSXExpressionContainer(makeReplace(value.trim())));
-            } else {
-              path.replaceWithSourceString(`intl.get('${value}')`);
-            }
-          }
-        },
-        TemplateLiteral(path) {
-          const { node } = path;
-          if(!node.loc) {return};
-          const location = `${path.hub.file.log.filename}#${node.loc.start.line}#${node.loc.start.column}`;
-          if(deal[location]) { return }
-          //const source = recast.print(path.node,{quote:'single'}).code.replace(/([\u4e00-\u9fa5]+)/g,"${intl.get('$1')}");
-          //path.replaceWithSourceString(source);
-          deal[location] = true;
         }
-      }
     };
 }
 
 
-if(module === require.main) {
-    run(p.join(__dirname,'cases'));
+if (module === require.main) {
+    run(p.join(__dirname, 'cases'));
 }
 
 module.exports = {
