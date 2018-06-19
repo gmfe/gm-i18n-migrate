@@ -23,6 +23,7 @@
   },
   "homepage": "https://github.com/Realwate/i18n-migration#readme",
   "dependencies": {
+    "babel-code-frame": "^6.26.0",
     "babel-core": "^6.26.3",
     "babel-types": "^6.26.0",
     "fs-extra": "^6.0.1",

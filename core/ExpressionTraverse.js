@@ -12,31 +12,31 @@ const t = require('babel-types')
 const p = require('path');
 const { resourceDir, outputDir } = config;
 
-const ROOT_TYPES = {
-    ObjectProperty(path) { // 对象属性
-        return path.get('value')
-    },
-    ArrayExpression(path) { // 数组elements 返回的是多个nodePath
-        return path.get('elements')
-    },
-    CallExpression(path) { // 函数调用 arguments 返回的是多个nodePath
-        return path.get('arguments')
-    },
-    VariableDeclarator(path) { // 变量初始化
-        return path.get('init');
-    },
-    AssignmentExpression(path) { // 赋值语句
-        return path.get('right')
-    },
-    ReturnStatement(path) { // 返回语句
-        return path.get('argument');
-    },
-    JSXExpressionContainer(path) { // jsx表达式
-        return path.get('expression');
-    },
-    JSXAttribute(path) { // jsx属性
-        return path.get('value');
-    },
+const ROOT_PARENT_TYPES = {
+    ObjectProperty:true,  // 对象属性
+    ConditionalExpression:true, // 条件
+    VariableDeclarator:true, // 变量初始化
+    AssignmentExpression:true, // 赋值语句
+    ReturnStatement:true,  // 返回语句
+    JSXExpressionContainer:true,  // jsx表达式
+    JSXAttribute:true, // jsx属性 
+    ArrayExpression:true, // 数组
+    CallExpression:true, // 函数调用
+}
+// 判断是否为rootPath的父亲
+function isRootParentPath(path) {
+    let { node } = path;
+    let { type } = node;
+    switch (type) {
+        case 'BinaryExpression':
+            if (node.operator.startsWith('==') ||
+                node.operator.startsWith('!=')) {
+                return true;
+            };
+            break;
+    }
+
+    return !!ROOT_PARENT_TYPES[type];
 }
 
 class TraverseHistory {
@@ -44,11 +44,11 @@ class TraverseHistory {
         this.cache = new Map();
     }
     hashCode(path) {
-        let {loc } = path.node;
-        if(loc == null){
+        let { loc } = path.node;
+        if (loc == null) {
             throw new Error('empty loc')
         }
-        let {start,end} = loc;
+        let { start, end } = loc;
         return `${path.hub.file.log.filaname}:${start.line},${start.column}-${end.line},${end.column}`
     }
     add(path) {
@@ -129,7 +129,7 @@ const DYNAMIC_CASE_HANDLER = {
         let right = path.get('right')
         if (operator !== '+') {
             // TODO
-            return;
+            return {};
         }
 
         let leftResult = recursive(left);
@@ -177,13 +177,13 @@ function recursive(path) {
     }
 
     // TODO 不能处理 跳过？
-    console.warn(`不能处理该类型${type}:${path.getSource()}`)
+    util.warn(`不能处理该类型${type}:${path.getSource()}`)
     return {};
 }
 
 class Expression {
     constructor(path) {
-        this.curPath = path;
+        this.curRootPath = path;
         this.resourceInfo = null;
     }
     calculate() {
@@ -191,21 +191,21 @@ class Expression {
         let {
             template,
             param
-        } = recursive(this.curPath);
+        } = recursive(this.curRootPath);
         if (template == null) {
-            // 复杂对象，放弃
+            // 不用处理的场景 //复杂对象，放弃
             return null;
         }
         this.replaceSource(template, param)
         return this.resourceInfo;
     }
     getPath() {
-        return this.curPath;
+        return this.curRootPath;
     }
     replaceSource(template, param) {
         // 一个表达式一个key
         let key = config.strategy.keyStrategy({});
-        let path = this.curPath;
+        let path = this.curRootPath;
         // 记录替换之前node的信息
         let oldLoc = path.node.loc;
         this.resourceInfo = {
@@ -221,17 +221,20 @@ class Expression {
             sourceStr = `${config.callStatement}('${key}',{${param}})${comment}`;
         }
 
-        let {expression} = util.parseStr(sourceStr);
-        // jsx不能直接替换
-        if (path.node.type === 'JSXText') {
+        let { expression } = util.parseStr(sourceStr);
+       
+        // 特殊情况处理 []
+        // jsx 
+        if (path.node.type === 'JSXText'
+            || path.parent.type === 'JSXAttribute') {
             path.replaceWith(
                 t.JSXExpressionContainer(expression)
             );
-        }else{
+        } else {
             path.replaceWith(expression)
         }
         path.node.loc = oldLoc; // 修复loc 用于hash防止多次遍历节点
-        console.log(`替换表达式: ${sourceStr}`,JSON.stringify(this.resourceInfo))
+        util.log(`替换表达式: ${sourceStr}`, JSON.stringify(this.resourceInfo))
     }
 
 }
@@ -281,36 +284,31 @@ class ExpressionTraverse {
         write(getResourceFilePath('cn.json'), this.resourceContent, 'resource')
     }
     findRoot(path) {
-        let rootPath = path.find((path) => {
-            let {
-                node: {
-                    type
-                }
-            } = path;
-            return !!ROOT_TYPES[type]
-        });
-        let childPath = ROOT_TYPES[rootPath.node.type](rootPath);
-        return childPath;
+        // 子能找到父 父找不到子(可能一对多)
+        let rootPath = null;
+        let curPath = path;
+        while (path = path.parentPath) {
+            if (isRootParentPath(path)) {
+                rootPath = curPath;
+                break;
+            }
+            curPath = path;
+        }
+
+        return rootPath;
     }
     traverse(path) {
-        console.log(`traverse节点\n${JSON.stringify(util.getMetaFromPath(path))}`)
-        // root 代表 expression的起点 
+        // root 代表 expression的起点
         // jsx无法判断明确的起点
         let rootPath = this.findRoot(path);
+        util.assert(rootPath == null,'找不到root',path)
         // root为ArrayExpression 此时有多个 elements
         // 不一定扁平 ['we',{d:'ewe'}] 因此要单独对每一个child 处理
-        if (Array.isArray(rootPath)) {
-            for (let cp of rootPath) {
-                this.traverseByRoot(cp)
-            }
-            return;
-        }
         this.traverseByRoot(rootPath);
-
     }
 
     traverseByRoot(rootPath) {
-        console.log(`开始遍历节点\n${JSON.stringify(util.getMetaFromPath(rootPath))}`)
+        util.log(`开始遍历节点\n${JSON.stringify(util.getMetaFromPath(rootPath))}`)
         // 已经替换过的path
         // if (this.history.has(rootPath)) {
         //     return;
@@ -320,19 +318,19 @@ class ExpressionTraverse {
             && !util.isChinese(rootPath.node.value)) {
             return;
         }
-        if(util.hasTransformedPath(rootPath)){
+        if (util.hasTransformedPath(rootPath)) {
             // 计算过了的 // 理论上skip应不会遍历到，临时解决 
             return;
         }
         let exp = new Expression(rootPath)
         let result = exp.calculate();
         if (result == null) {
-            // 计算不了的情况 ['e',{a:{f:'d'},}]
+            // 计算不了的情况 ['e',{a:{f:'d'},}] if(a=='c')
             return;
         }
-       
+
         Object.assign(this.store, result);
-         // 新生成的节点不用遍历 rootPath.skip(); 之后还是会遍历
+        // 新生成的节点不用遍历 rootPath.skip(); 之后还是会遍历
         // this.history.add(exp.getPath());
     }
 

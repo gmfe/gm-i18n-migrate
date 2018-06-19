@@ -7,7 +7,7 @@ let defaultConfig = {
     outputDir: 'out',
     exclude: [],
     callStatement: 'I18N.get',
-    importStatementStr: `import { I18N } from '@common/I18N';`,
+    importStatementStr: "import { I18N } from '@common/I18N';\n",
 
     // key分隔符
     keySeparator: '#',
