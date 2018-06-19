@@ -1,6 +1,20 @@
 
+let f = a['kk']
+
+let a = {tt:['中',{d:'国',f:'qwe'}]}
+let post = {
+    tags:[
+        {
+            name:'javascript',
+        }
+    ]
+}
+
+// var c = cb({a:'测试'},'北极光','qwer')
+
 function t1(){
-    let name = 'jack'
+    let str1 = 'jack' + post.tags[0].name;
+    let str2 = `jack${post.tags[0].name}`;
     let msg = `你好${name}，我是${name}`
     console.log(msg)
 }
@@ -12,9 +26,3 @@ function t2(){
     let msg = '下单时间：周('+n+')' + week;
     console.log(msg)
 }
-import React from 'react';
-let name = '中国';
-let s = '你好，'+name+'测试'+rew+tr;
-let num = 1;
-
-let cc = '你好，'+name+(num>1?'qe':'qw')

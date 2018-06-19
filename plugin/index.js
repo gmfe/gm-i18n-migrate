@@ -1,9 +1,16 @@
+
+
 let expressionTraverse = require('../core/ExpressionTraverse')
 let config = require('../config')
 let util = require('../core/util')
 
+const EXCLUDE_TYPE = {
+    ImportDeclaration:true, // import语句中的字符串
+    MemberExpression:true, // 类似user['name']
+}
+
 // 通过 traverse 找到最顶层的表达式
-let dynamicVisitor = {
+let visitor = {
     Program(path) { // 添加 import
         const imported = path.get("body")
         .filter(p => p.isImportDeclaration())
@@ -24,15 +31,23 @@ let dynamicVisitor = {
        if(util.hasTransformed(path)){
            return;
        }
-       // 导入语句
-       if(path.parent.type === 'ImportDeclaration'){
+       // 特殊的语句
+       if(EXCLUDE_TYPE[path.parent.type]){
            return;
        }
+      
         expressionTraverse.traverse(path);
     },
     TemplateLiteral(path){
         expressionTraverse.traverse(path);
-    }
+    },
+    JSXText(path) {
+        // JSXText 目前就直接替换
+        expressionTraverse.traverseByRoot(path);
+    },
+    
 }
 
-module.exports = dynamicVisitor
+module.exports = () => ({
+  visitor
+})

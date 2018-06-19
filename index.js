@@ -1,12 +1,10 @@
 const glob = require('glob');
 const fs = require('fs-extra');
 const p = require('path');
-const visitor = require('./visitor')
 let expressionTraverse = require('./core/ExpressionTraverse')
 let log = console.log.bind(console);
 let config = require('./config')
-
-const {resourceDir,outputDir,exclude} = config;
+const {exclude} = config;
 
 /* 基本思路
 // 源字符串
@@ -35,32 +33,6 @@ enMap = {
 }
 */
 
-
-function getOutputDir(filePath) {
-    filePath = filePath.split(p.sep).slice(-2, -1);
-    return p.join(outputDir, ...filePath)
-}
-
-function getTransformFilePath(filePath) {
-    let filaname = filePath.split('/').slice(-1);
-    return p.join(getOutputDir(filePath), ...filaname)
-}
-
-function getResourceFilePath(filaname){
-    return p.join(resourceDir, filaname)
-}
-
-
-function write(filePath, content,type) {
-    if(!type && !config.rewrite){
-        filePath = getTransformFilePath(filePath)
-    }
-   
-    fs.outputFileSync(filePath, content, {
-        encoding: 'utf-8'
-    });
-}
-
 function run(path) {
     glob(`${path}/**/*.{js,jsx}`, {
             ignore: exclude.map(pattern => `${path}/${pattern}`)
@@ -70,40 +42,12 @@ function run(path) {
                 throw err;
             }
             let start = Date.now();
-            fs.removeSync(outputDir);
-
-            files.forEach((filePath, i) => {
-                if (filePath.includes('comp')) {
-                    return;
-                }
-
-                const {
-                    transform
-                } = require('./core/transformer')
-                const code = transform(filePath, scan)
-                // 文件更新替换为 i18n.get 
-                write(filePath, code);
-
-            });
-            // 资源文件
-            let {
-                resourceContent
-            } = expressionTraverse;
-            write(getResourceFilePath('cn.json'),resourceContent,'resource')
+            expressionTraverse.execute(files);
+           
             let end = Date.now();
             let spend = ((end - start) / 1000).toFixed(2);
             log(`执行完毕！时间：${spend}s`)
         });
-}
-
-function scan({
-    types: t
-}) {
-    return {
-        visitor: {
-            ...visitor
-        }
-    }
 }
 
 
