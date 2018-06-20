@@ -9,7 +9,16 @@
             "type": "node",
             "request": "launch",
             "name": "启动程序",
-            "program": "${workspaceFolder}/index.js"
+            "program": "${workspaceFolder}/src/index.js"
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "test",
+            "program": "${workspaceFolder}/src/index.js",
+            "args": [
+                "./cases"
+            ]
         }
     ]
 }

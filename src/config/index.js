@@ -2,7 +2,7 @@ const p = require('path');
 const fs = require('fs-extra');
 
 let defaultConfig = {
-    rewrite:false, // 覆盖文件
+    rewrite:true, // 覆盖文件
     resourceDir: 'resource',
     outputDir: 'out',
     exclude: [],
@@ -24,7 +24,7 @@ let strategy = defaultConfig.strategy = {};
 strategy.keyStrategy = (() => {
     let counter = 1;
     return ({
-        sourceString,
+        template,
         filePath,
         meta
     }) => {

@@ -10,15 +10,18 @@ const {
 const fs = require('fs-extra');
 const t = require('babel-types')
 const p = require('path');
-const { resourceDir, outputDir } = config;
+const {
+    resourceDir,
+    outputDir
+} = config;
 
 const ROOT_PARENT_TYPES = {
-    ObjectProperty: true,  // 对象属性
+    ObjectProperty: true, // 对象属性
     ConditionalExpression: true, // 条件
     VariableDeclarator: true, // 变量初始化
     AssignmentExpression: true, // 赋值语句
-    ReturnStatement: true,  // 返回语句
-    JSXExpressionContainer: true,  // jsx表达式
+    ReturnStatement: true, // 返回语句
+    JSXExpressionContainer: true, // jsx表达式
     JSXAttribute: true, // jsx属性 
     ArrayExpression: true, // 数组
     CallExpression: true, // 函数调用
@@ -29,14 +32,18 @@ const ROOT_PARENT_TYPES = {
     SwitchCase: true, // switch case  
     NewExpression: true, // new Error('ff') 
     ArrowFunctionExpression: true // value => Big(value || 0).div(100).toFixed(2) + '元'
-    
+
 }
 const rootOperator = ['==', '!=', '===', '!==', 'in'];
 const variableOperator = ['-', '*', '/'];
 // 判断是否为rootPath的父亲
 function isRootParentPath(path) {
-    let { node } = path;
-    let { type } = node;
+    let {
+        node
+    } = path;
+    let {
+        type
+    } = node;
     switch (type) {
         case 'BinaryExpression':
             if (rootOperator.includes(node.operator)) {
@@ -53,11 +60,16 @@ class TraverseHistory {
         this.cache = new Map();
     }
     hashCode(path) {
-        let { loc } = path.node;
+        let {
+            loc
+        } = path.node;
         if (loc == null) {
             throw new Error('empty loc')
         }
-        let { start, end } = loc;
+        let {
+            start,
+            end
+        } = loc;
         return `${path.hub.file.log.filaname}:${start.line},${start.column}-${end.line},${end.column}`
     }
     add(path) {
@@ -68,17 +80,18 @@ class TraverseHistory {
     }
 }
 
-function staticCaseHandler(path){
+function staticCaseHandler(path) {
     let node = path.node;
     switch (node.type) {
         case 'StringLiteral':
         case 'JSXText':
-        return {
-            template: node.value
-        };
+            return {
+                template: node.value
+            };
     }
     return null;
 }
+
 function variableCaseHandler(path) {
     let node = path.node;
     let variableName = config.strategy.variableStrategy({});
@@ -94,17 +107,17 @@ function variableCaseHandler(path) {
                 template,
                 param
             }
-        case 'BinaryExpression':  //数学运算
-        let {
-            operator
-        } = node;
-        if(variableOperator.includes(operator)){
-            param = `${variableName}:${path.getSource()},`
-            return {
-                template,
-                param
+        case 'BinaryExpression': //数学运算
+            let {
+                operator
+            } = node;
+            if (variableOperator.includes(operator)) {
+                param = `${variableName}:${path.getSource()},`
+                return {
+                    template,
+                    param
+                }
             }
-        }
         case 'Identifier':
             param = `${variableName}:${node.name},`
             return {
@@ -124,7 +137,7 @@ function dynamicCaseHandler(path) {
             } = path.node;
             let left = path.get('left')
             let right = path.get('right')
-            if (operator !== '+') {       
+            if (operator !== '+') {
                 // +认为是字符串相加
                 return null;
             }
@@ -139,11 +152,14 @@ function dynamicCaseHandler(path) {
             let param = [];
             //  param格式为`${variableName}:${node.name},`
             let template = sourceStr.replace(/([\s\S]*?\${)([\w\.\[\]]+?)(}[\s\S]*?)/g, (m, $1, $2, $3) => {
-                let variableName = config.strategy.variableStrategy({});
-                param.push(`${variableName}:${$2}`);
-                return `${$1}${variableName}${$3}`
-            })
+                    let variableName = config.strategy.variableStrategy({});
+                    param.push(`${variableName}:${$2}`);
+                    return `${$1}${variableName}${$3}`
+                })
                 .replace(/^`([\s\S]*)`$/, '$1')
+            if (!util.isChinese(template)) {
+                return {};
+            }
             param = param.join(',')
             return {
                 template,
@@ -167,7 +183,6 @@ function assignResult(...targets) {
     return dest;
 }
 
-
 function recursive(path) {
     let result = null;
     // 仅是静态模板
@@ -184,19 +199,46 @@ function recursive(path) {
     };
 
     // 不能处理返回 a+2+(3*n)+'s'
-    util.warn(`不能处理该类型`,path)
+    util.warn(`不能处理该类型`, path)
     // TODO 顶层不能处理返回 null 后面返回getSource()容错
     return {
         // template:path.getSource()
     };
 }
 
+
+class FileHelper {
+    constructor(basePath) {
+        this.basePath = basePath.replace(/\\/g, '/');
+    }
+    getTransformFilePath(filePath) {
+        filePath = filePath.split(this.basePath)[1];
+        return p.join(outputDir, filePath)
+    }
+    getResourceFilePath(filaname) {
+        return p.join(resourceDir, filaname)
+    }
+    writeResouce(filename, json) {
+        let resoucePath = this.getResourceFilePath(filename);
+        fs.outputJSONSync(resoucePath, json, {
+            encoding: 'utf-8'
+        });
+    }
+    write(filePath, content) {
+        if (!config.rewrite) {
+            filePath = this.getTransformFilePath(filePath)
+        }
+        fs.outputFileSync(filePath, content, {
+            encoding: 'utf-8'
+        });
+    }
+}
 class Expression {
     constructor(path) {
         this.curRootPath = path;
         this.resourceInfo = null;
     }
-    calculate() {
+    evaluate() {
         // 递归得出表达式的template和param
         let {
             template,
@@ -218,7 +260,9 @@ class Expression {
     }
     replaceSource(template, param) {
         // 一个表达式一个key
-        let key = config.strategy.keyStrategy({});
+        let key = config.strategy.keyStrategy({
+            template
+        });
         let path = this.curRootPath;
         // 记录替换之前node的信息
         let oldLoc = path.node.loc;
@@ -236,20 +280,21 @@ class Expression {
         }
 
         try {
-            let { expression } = util.parseStr(sourceStr);
+            let {
+                expression
+            } = util.parseStr(sourceStr);
             // 特殊情况处理 []
             // jsx 
-            if (path.node.type === 'JSXText'
-                || path.parent.type === 'JSXAttribute') {
+            if (path.node.type === 'JSXText' ||
+                path.parent.type === 'JSXAttribute') {
                 path.replaceWith(
                     t.JSXExpressionContainer(expression)
                 );
-            } else if (path.parent.type === 'ObjectProperty'
-                && path.parentKey === 'key') { //对象属性的key { [‘中国’] }
+            } else if (path.parent.type === 'ObjectProperty' &&
+                path.parentKey === 'key') { //对象属性的key { [‘中国’] }
                 path.parentPath.node.computed = true;
                 path.replaceWith(expression)
-            }
-            else {
+            } else {
                 path.replaceWith(expression)
             }
             path.node.loc = oldLoc; // 修复loc 用于hash防止多次遍历节点
@@ -260,49 +305,21 @@ class Expression {
 
 }
 
-
-function getOutputDir(filePath) {
-    filePath = filePath.split(p.sep).slice(-2, -1);
-    return p.join(outputDir, ...filePath)
-}
-
-function getTransformFilePath(filePath) {
-    let filaname = filePath.split('/').slice(-1);
-    return p.join(getOutputDir(filePath), ...filaname)
-}
-
-function getResourceFilePath(filaname) {
-    return p.join(resourceDir, filaname)
-}
-
-
-function write(filePath, content, type) {
-    if (!type && !config.rewrite) {
-        filePath = getTransformFilePath(filePath)
-    }
-
-    fs.outputFileSync(filePath, content, {
-        encoding: 'utf-8'
-    });
-}
 class ExpressionTraverse {
     constructor() {
         this.history = new TraverseHistory();
         this.store = {};
     }
-    execute(files) {
-        const transformPlugin = require('../plugin')
-        // fs.removeSync(outputDir);
+    start(basePath, files) {
+        const transformPlugin = require('../plugin');
+        let fileHelper = new FileHelper(basePath);
         files.forEach((filePath) => {
-            // if(!filePath.includes('test')){
-            //     return;
-            // }
             const code = transform(filePath, transformPlugin)
             // 文件更新替换为 i18n.get 
-            write(filePath, code);
+            fileHelper.write(filePath, code);
         });
         // 资源文件
-        write(getResourceFilePath('cn.json'), this.resourceContent, 'resource')
+        fileHelper.writeResouce('cn.json', this.resourceContent)
     }
     findRoot(path) {
         // 子能找到父 父找不到子(可能一对多)
@@ -329,23 +346,23 @@ class ExpressionTraverse {
     }
 
     traverseByRoot(rootPath) {
-        util.log(`开始遍历节点`,rootPath)
+        util.log(`开始遍历节点`, rootPath)
         // 已经替换过的path
         // if (this.history.has(rootPath)) {
         //     return;
         // }
         // 仅由StringLiteral/JSXText 且不是中文 构成的expression
-        if (staticCaseHandler(rootPath)
-            && !util.isChinese(rootPath.node.value)) {
+        if (staticCaseHandler(rootPath) &&
+            !util.isChinese(rootPath.node.value)) {
             return;
         }
         if (util.hasTransformedPath(rootPath)) {
             // 已经是 i18n 函数
-            util.warn(`重复遍历的rootPath$`,rootPath)
+            util.warn(`重复遍历的rootPath$`, rootPath)
             return;
         }
         let exp = new Expression(rootPath)
-        let result = exp.calculate();
+        let result = exp.evaluate();
         if (result == null) {
             // 计算不了的情况 ['e',{a:{f:'d'},}] if(a=='c')
             return;
@@ -357,7 +374,7 @@ class ExpressionTraverse {
     }
 
     get resourceContent() {
-        return JSON.stringify(this.store);
+        return this.store;
     }
 
 }
