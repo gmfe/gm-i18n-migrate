@@ -13,24 +13,33 @@ const p = require('path');
 const { resourceDir, outputDir } = config;
 
 const ROOT_PARENT_TYPES = {
-    ObjectProperty:true,  // 对象属性
-    ConditionalExpression:true, // 条件
-    VariableDeclarator:true, // 变量初始化
-    AssignmentExpression:true, // 赋值语句
-    ReturnStatement:true,  // 返回语句
-    JSXExpressionContainer:true,  // jsx表达式
-    JSXAttribute:true, // jsx属性 
-    ArrayExpression:true, // 数组
-    CallExpression:true, // 函数调用
+    ObjectProperty: true,  // 对象属性
+    ConditionalExpression: true, // 条件
+    VariableDeclarator: true, // 变量初始化
+    AssignmentExpression: true, // 赋值语句
+    ReturnStatement: true,  // 返回语句
+    JSXExpressionContainer: true,  // jsx表达式
+    JSXAttribute: true, // jsx属性 
+    ArrayExpression: true, // 数组
+    CallExpression: true, // 函数调用
+    AssignmentPattern: true, // 函数默认值
+    LogicalExpression: true, // 逻辑表达式
+    ClassProperty: true, // 类属性
+    SwitchStatement: true, // switch语句
+    SwitchCase: true, // switch case  
+    NewExpression: true, // new Error('ff') 
+    ArrowFunctionExpression: true // value => Big(value || 0).div(100).toFixed(2) + '元'
+    
 }
+const rootOperator = ['==', '!=', '===', '!==', 'in'];
+const variableOperator = ['-', '*', '/'];
 // 判断是否为rootPath的父亲
 function isRootParentPath(path) {
     let { node } = path;
     let { type } = node;
     switch (type) {
         case 'BinaryExpression':
-            if (node.operator.startsWith('==') ||
-                node.operator.startsWith('!=')) {
+            if (rootOperator.includes(node.operator)) {
                 return true;
             };
             break;
@@ -59,50 +68,89 @@ class TraverseHistory {
     }
 }
 
-const STATIC_CASE_HANDLER = {
-    StringLiteral({
-        node
-    }) {
+function staticCaseHandler(path){
+    let node = path.node;
+    switch (node.type) {
+        case 'StringLiteral':
+        case 'JSXText':
         return {
             template: node.value
         };
-    },
-    JSXText({
-        node
-    }) {
-        return {
-            template: node.value
-        };
-    },
+    }
+    return null;
+}
+function variableCaseHandler(path) {
+    let node = path.node;
+    let variableName = config.strategy.variableStrategy({});
+    let template = `${prefix}${variableName}${suffix}`;
+    let param = null;
+    switch (node.type) {
+        case 'LogicalExpression':
+        case 'CallExpression':
+        case 'MemberExpression':
+        case 'ConditionalExpression':
+            param = `${variableName}:${path.getSource()},`
+            return {
+                template,
+                param
+            }
+        case 'BinaryExpression':  //数学运算
+        let {
+            operator
+        } = node;
+        if(variableOperator.includes(operator)){
+            param = `${variableName}:${path.getSource()},`
+            return {
+                template,
+                param
+            }
+        }
+        case 'Identifier':
+            param = `${variableName}:${node.name},`
+            return {
+                template,
+                param
+            }
+    }
+    return null;
 }
 
-const VARIABLE_CASE_HANDLER = {
-    CallExpression(path) {
-        let variableName = config.strategy.variableStrategy({});
-        let template = `${prefix}${variableName}${suffix}`
-        let param = `${variableName}:${path.getSource()},`
-        return {
-            template,
-            param
-        }
-    },
-    MemberExpression(path) {
-        return VARIABLE_CASE_HANDLER.CallExpression(path);
-    },
-    ConditionalExpression(path) {
-        return VARIABLE_CASE_HANDLER.CallExpression(path);
-    },
-    Identifier({
-        node
-    }) {
-        let variableName = config.strategy.variableStrategy({});
-        let template = `${prefix}${variableName}${suffix}`
-        let param = `${variableName}:${node.name},`
-        return {
-            template,
-            param
-        }
-    },
+function dynamicCaseHandler(path) {
+    let node = path.node;
+    switch (node.type) {
+        case 'BinaryExpression':
+            let {
+                operator
+            } = path.node;
+            let left = path.get('left')
+            let right = path.get('right')
+            if (operator !== '+') {       
+                // +认为是字符串相加
+                return null;
+            }
+
+            let leftResult = recursive(left);
+            let rightResult = recursive(right);
+            return assignResult(leftResult, rightResult);
+
+        case 'TemplateLiteral':
+            // 模板直接正则来做
+            let sourceStr = path.getSource();
+            let param = [];
+            //  param格式为`${variableName}:${node.name},`
+            let template = sourceStr.replace(/([\s\S]*?\${)([\w\.\[\]]+?)(}[\s\S]*?)/g, (m, $1, $2, $3) => {
+                let variableName = config.strategy.variableStrategy({});
+                param.push(`${variableName}:${$2}`);
+                return `${$1}${variableName}${$3}`
+            })
+                .replace(/^`([\s\S]*)`$/, '$1')
+            param = param.join(',')
+            return {
+                template,
+                param
+            }
+    }
+    return null;
 }
 
 function assignResult(...targets) {
@@ -119,66 +167,28 @@ function assignResult(...targets) {
     return dest;
 }
 
-// 组合类型 
-const DYNAMIC_CASE_HANDLER = {
-    BinaryExpression(path) {
-        let {
-            operator
-        } = path.node;
-        let left = path.get('left')
-        let right = path.get('right')
-        if (operator !== '+') {
-            // TODO
-            return {};
-        }
-
-        let leftResult = recursive(left);
-        let rightResult = recursive(right);
-        return assignResult(leftResult, rightResult);
-    },
-    TemplateLiteral(path) {
-        // 模板直接正则来做
-        let sourceStr = path.getSource();
-        let param = [];
-        //  param格式为`${variableName}:${node.name},`
-        let template = sourceStr.replace(/([\s\S]*?\${)([\w\.\[\]]+?)(}[\s\S]*?)/g, (m, $1, $2, $3) => {
-            let variableName = config.strategy.variableStrategy({});
-            param.push(`${variableName}:${$2}`);
-            return `${$1}${variableName}${$3}`
-        })
-            .replace(/^`([\s\S]*)`$/, '$1')
-        param = param.join(',')
-        return {
-            template,
-            param
-        }
-
-    },
-
-}
 
 function recursive(path) {
-    let {
-        type
-    } = path.node;
-    let handler;
+    let result = null;
     // 仅是静态模板
-    if (handler = STATIC_CASE_HANDLER[type]) {
-        return handler(path)
+    if (result = staticCaseHandler(path)) {
+        return result;
     }
     // 仅是变量
-    if (handler = VARIABLE_CASE_HANDLER[type]) {
-        return handler(path)
+    if (result = variableCaseHandler(path)) {
+        return result;
+    };
+    // 动态模板 与 字符串组合而成
+    if (result = dynamicCaseHandler(path)) {
+        return result;
     };
 
-    // 动态模板 与 字符串组合而成
-    if (handler = DYNAMIC_CASE_HANDLER[type]) {
-        return handler(path)
-    }
-
-    // TODO 不能处理 跳过？
-    util.warn(`不能处理该类型${type}:${path.getSource()}`)
-    return {};
+    // 不能处理返回 a+2+(3*n)+'s'
+    util.warn(`不能处理该类型`,path)
+    // TODO 顶层不能处理返回 null 后面返回getSource()容错
+    return {
+        // template:path.getSource()
+    };
 }
 
 class Expression {
@@ -194,6 +204,10 @@ class Expression {
         } = recursive(this.curRootPath);
         if (template == null) {
             // 不用处理的场景 //复杂对象，放弃
+            return null;
+        }
+        // template没有中文 {marginBottom: (4 - addressLength) * 60 + 'px'} 
+        if (!util.isChinese(template)) {
             return null;
         }
         this.replaceSource(template, param)
@@ -221,20 +235,27 @@ class Expression {
             sourceStr = `${config.callStatement}('${key}',{${param}})${comment}`;
         }
 
-        let { expression } = util.parseStr(sourceStr);
-       
-        // 特殊情况处理 []
-        // jsx 
-        if (path.node.type === 'JSXText'
-            || path.parent.type === 'JSXAttribute') {
-            path.replaceWith(
-                t.JSXExpressionContainer(expression)
-            );
-        } else {
-            path.replaceWith(expression)
+        try {
+            let { expression } = util.parseStr(sourceStr);
+            // 特殊情况处理 []
+            // jsx 
+            if (path.node.type === 'JSXText'
+                || path.parent.type === 'JSXAttribute') {
+                path.replaceWith(
+                    t.JSXExpressionContainer(expression)
+                );
+            } else if (path.parent.type === 'ObjectProperty'
+                && path.parentKey === 'key') { //对象属性的key { [‘中国’] }
+                path.parentPath.node.computed = true;
+                path.replaceWith(expression)
+            }
+            else {
+                path.replaceWith(expression)
+            }
+            path.node.loc = oldLoc; // 修复loc 用于hash防止多次遍历节点
+        } catch (err) {
+            util.throwError(`表达式替换出错:${err.message}\n${sourceStr}`, path)
         }
-        path.node.loc = oldLoc; // 修复loc 用于hash防止多次遍历节点
-        util.log(`替换表达式: ${sourceStr}`, JSON.stringify(this.resourceInfo))
     }
 
 }
@@ -301,25 +322,26 @@ class ExpressionTraverse {
         // root 代表 expression的起点
         // jsx无法判断明确的起点
         let rootPath = this.findRoot(path);
-        util.assert(rootPath == null,'找不到root',path)
+        util.assert(rootPath == null, '找不到root的场景', path)
         // root为ArrayExpression 此时有多个 elements
         // 不一定扁平 ['we',{d:'ewe'}] 因此要单独对每一个child 处理
         this.traverseByRoot(rootPath);
     }
 
     traverseByRoot(rootPath) {
-        util.log(`开始遍历节点\n${JSON.stringify(util.getMetaFromPath(rootPath))}`)
+        util.log(`开始遍历节点`,rootPath)
         // 已经替换过的path
         // if (this.history.has(rootPath)) {
         //     return;
         // }
         // 仅由StringLiteral/JSXText 且不是中文 构成的expression
-        if (STATIC_CASE_HANDLER[rootPath.node.type]
+        if (staticCaseHandler(rootPath)
             && !util.isChinese(rootPath.node.value)) {
             return;
         }
         if (util.hasTransformedPath(rootPath)) {
-            // 计算过了的 // 理论上skip应不会遍历到，临时解决 
+            // 已经是 i18n 函数
+            util.warn(`重复遍历的rootPath$`,rootPath)
             return;
         }
         let exp = new Expression(rootPath)

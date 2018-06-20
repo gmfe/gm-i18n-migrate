@@ -8,7 +8,7 @@ let defaultConfig = {
     exclude: [],
     callStatement: 'I18N.get',
     importStatementStr: "import { I18N } from '@common/I18N';\n",
-
+    debug: false,
     // key分隔符
     keySeparator: '#',
     //命名空间分割符

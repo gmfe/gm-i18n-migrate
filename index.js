@@ -197,7 +197,7 @@ function pick(babel) {
 
 
 if (module === require.main) {
-    run(p.join(__dirname, 'cases'));
+    run(p.join(__dirname, 'cases/js'));
 }
 
 module.exports = {

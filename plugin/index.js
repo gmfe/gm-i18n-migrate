@@ -9,6 +9,17 @@ const EXCLUDE_TYPE = {
     ImportDeclaration:true, // import语句中的字符串
     MemberExpression:true, // 类似user['name']
 }
+function shouldExclude(path){
+    let type = path.parent.type
+    switch(type){
+        case 'NewExpression': 
+        if(path.parent.callee.name === 'RegExp'){ // 正则跳过
+            return true;
+        }
+        break;
+    }
+    return !!EXCLUDE_TYPE[type];
+}
 
 // 通过 traverse 找到最顶层的表达式
 let visitor = {
@@ -39,7 +50,7 @@ let visitor = {
            return;
        }
        // 特殊的语句
-       if(EXCLUDE_TYPE[path.parent.type]){
+       if(shouldExclude(path)){
            return;
        }
       

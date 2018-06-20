@@ -7,18 +7,30 @@ function transform(filename, transformPlugin) {
         parserOpts: {
             parser: recast.parse,
             plugins: [
-            'asyncGenerators',
-            'classConstructorCall',
-            'classProperties',
-            'decorators',
-            'doExpressions',
-            'exportExtensions',
-            'flow',
-            'functionSent',
-            'functionBind',
-            'jsx',
-            'objectRestSpread',
-            'dynamicImport',
+                "asyncGenerators",
+                "bigInt",
+                "classPrivateMethods",
+                "classPrivateProperties",
+                "classProperties",
+                "decorators",
+                "decorators-legacy",
+                "doExpressions",
+                "dynamicImport",
+                "exportDefaultFrom",
+                "exportExtensions",
+                "exportNamespaceFrom",
+                "functionBind",
+                "functionSent",
+                "importMeta",
+                "nullishCoalescingOperator",
+                "numericSeparator",
+                "objectRestSpread",
+                "optionalCatchBinding",
+                "optionalChaining",
+                "pipelineOperator",
+                "throwExpressions",
+                'classConstructorCall',
+                'jsx',
             ],
         },
         generatorOpts: {
@@ -26,19 +38,20 @@ function transform(filename, transformPlugin) {
         },
         plugins: [transformPlugin],
         // sourceMaps: true,
-        });
+    });
+    // const result = babel.transformFileSync(filename, {
+    //     presets: ['babel-preset-es2015', 'babel-preset-stage-0',].map(require.resolve),
+    //     plugins: [
+    //         require.resolve('babel-plugin-syntax-jsx'),
+    //         require.resolve('babel-plugin-transform-decorators-legacy'),
+    //         transformPlugin,
+    //     ]
+    // });
     return result.code;
 }
 
-// const result = transformFileSync(filename, {
-//     presets: ['babel-preset-es2015', 'babel-preset-stage-0',].map(require.resolve),
-//     plugins: [
-//         require.resolve('babel-plugin-syntax-jsx'),
-//         require.resolve('babel-plugin-transform-decorators-legacy'),
-//         scan,
-//     ]
-// });
+
 
 module.exports = {
-  transform
+    transform
 }
