@@ -37,6 +37,7 @@ function transform(filename, transformPlugin) {
             generator: recast.print,
         },
         plugins: [transformPlugin],
+        babelrc: false,
         // sourceMaps: true,
     });
     // const result = babel.transformFileSync(filename, {

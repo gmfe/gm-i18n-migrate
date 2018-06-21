@@ -15,8 +15,9 @@
             "type": "node",
             "request": "launch",
             "name": "test",
-            "program": "${workspaceFolder}/src/index.js",
+            "program": "${workspaceFolder}/bin/cli.js",
             "args": [
+                "scan",
                 "./cases"
             ]
         }

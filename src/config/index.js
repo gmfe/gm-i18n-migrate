@@ -2,7 +2,7 @@ const p = require('path');
 const fs = require('fs-extra');
 
 let defaultConfig = {
-    rewrite:true, // 覆盖文件
+    rewrite:false, // 覆盖文件
     resourceDir: 'resource',
     outputDir: 'out',
     exclude: [],

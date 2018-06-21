@@ -33,22 +33,32 @@ enMap = {
 }
 */
 
-function run(path) {
-    glob(`${path}/**/*.{js,jsx}`, {
-            ignore: exclude.map(pattern => `${path}/${pattern}`)
-        },
-        async (err, files) => {
-            if (err) {
-                throw err;
-            }
-            let start = Date.now();
-            log(`开始扫描文件...`)
-            expressionTraverse.start(path,files);
-           
-            let end = Date.now();
-            let spend = ((end - start) / 1000).toFixed(2);
-            log(`执行完毕！时间：${spend}s`)
-        });
+function run(paths,options) {
+    let filePaths = [];
+    Object.assign(config,options);
+    log(`开始扫描文件...`)
+    for(let path of paths){
+        path = p.resolve(path);
+        let stat = fs.statSync(path);
+        if(stat.isDirectory()){
+            let files = glob.sync(`${path}/**/*.{js,jsx}`, {
+                ignore: exclude.map(pattern => `${path}/${pattern}`)
+            });
+            filePaths.push(...files);
+        }else if(stat.isFile()){
+            filePaths.push(path)
+        }
+    }
+    if(filePaths.length == 0){
+        throw new Error('请指定扫描路径!');
+    }
+    let start = Date.now();
+    log(`准备替换和提取多语...文件数：${filePaths.length}`)
+    expressionTraverse.start(filePaths);
+    
+    let end = Date.now();
+    let spend = ((end - start) / 1000).toFixed(2);
+    log(`执行完毕！时长：${spend}s`)
 }
 
 if (module === require.main) {

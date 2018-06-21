@@ -1,17 +1,17 @@
 #!/usr/bin/env node
 
 let program = require('commander');
-
+const {run} = require('../src')
 program
     .command('scan [paths...]')
-    // .option('--mode <mode>')
+    .option('--rewrite','覆盖已有文件')
     // .option('--rule <ruleName>', 'inspect a specific module rule')
     // .option('--plugin <pluginName>', 'inspect a specific plugin')
     // .option('--rules', 'list all module rule names')
     // .option('--plugins', 'list all plugin names')
     .description('扫描指定路径，提取资源文件并替换字符串为i18n')
     .action((paths, cmd) => {
-        console.log(paths, cleanArgs(cmd))
+        run(paths, cleanArgs(cmd))
     })
 
 program.parse(process.argv)

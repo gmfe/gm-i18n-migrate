@@ -106,7 +106,8 @@ function variableCaseHandler(path) {
             return {
                 template,
                 param
-            }
+            };
+            break;
         case 'BinaryExpression': //数学运算
             let {
                 operator
@@ -118,12 +119,14 @@ function variableCaseHandler(path) {
                     param
                 }
             }
+            break;
         case 'Identifier':
             param = `${variableName}:${node.name},`
             return {
                 template,
                 param
             }
+            break;
     }
     return null;
 }
@@ -198,25 +201,25 @@ function recursive(path) {
         return result;
     };
 
-    // 不能处理返回 a+2+(3*n)+'s'
-    util.warn(`不能处理该类型`, path)
-    // TODO 顶层不能处理返回 null 后面返回getSource()容错
-    return {
+    // 不能处理返回 
+    throw new Error('can not resolve expression')
+    // TODO 顶层不能处理返回 null 后面返回getSource()容错?
+    //return {
         // template:path.getSource()
-    };
+//};
 }
 
 
 class FileHelper {
     constructor(basePath) {
-        this.basePath = basePath.replace(/\\/g, '/');
+        // this.basePath = basePath.replace(/\\/g, '/');
     }
     getTransformFilePath(filePath) {
-        filePath = filePath.split(this.basePath)[1];
-        return p.join(outputDir, filePath)
+        filePath = filePath.split(/\/|\\/g).slice(-2);
+        return p.resolve(outputDir, ...filePath)
     }
     getResourceFilePath(filaname) {
-        return p.join(resourceDir, filaname)
+        return p.resolve(resourceDir, filaname)
     }
     writeResouce(filename, json) {
         let resoucePath = this.getResourceFilePath(filename);
@@ -240,14 +243,22 @@ class Expression {
     }
     evaluate() {
         // 递归得出表达式的template和param
-        let {
-            template,
-            param
-        } = recursive(this.curRootPath);
-        if (template == null) {
-            // 不用处理的场景 //复杂对象，放弃
+        let expResult;
+        try {
+            expResult = recursive(this.curRootPath);
+        } catch (e) {
+            util.warn(`${e.message}:解析表达式失败`, this.curRootPath)
+            // 不能处理的场景 1+a+'s'
             return null;
         }
+         let {
+            template,
+            param
+        } = expResult;
+        // if (template == null) {
+        //     // 不用处理的场景 //复杂对象，放弃
+        //     return null;
+        // }
         // template没有中文 {marginBottom: (4 - addressLength) * 60 + 'px'} 
         if (!util.isChinese(template)) {
             return null;
@@ -310,9 +321,9 @@ class ExpressionTraverse {
         this.history = new TraverseHistory();
         this.store = {};
     }
-    start(basePath, files) {
+    start(files) {
         const transformPlugin = require('../plugin');
-        let fileHelper = new FileHelper(basePath);
+        let fileHelper = new FileHelper();
         files.forEach((filePath) => {
             const code = transform(filePath, transformPlugin)
             // 文件更新替换为 i18n.get 
