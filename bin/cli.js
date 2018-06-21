@@ -5,6 +5,7 @@ const {run} = require('../src')
 program
     .command('scan [paths...]')
     .option('--rewrite','覆盖已有文件')
+    .option('--jsxtext','尝试整体解析JSXText')
     // .option('--rule <ruleName>', 'inspect a specific module rule')
     // .option('--plugin <pluginName>', 'inspect a specific plugin')
     // .option('--rules', 'list all module rule names')

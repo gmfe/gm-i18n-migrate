@@ -28,7 +28,24 @@ strategy.keyStrategy = (() => {
         filePath,
         meta
     }) => {
+        // 没有变量
+        if(!template.includes(config.interpolation.prefix)){
+            return `${template}`;
+        }
         return `KEY${counter++}`;
+    }
+})()
+strategy.commentStrategy = (() => {
+    let counter = 1;
+    return ({
+        template,
+        sourceStr
+    }) => {
+        // 没变量不用注释
+        if(!template.includes(config.interpolation.prefix)){
+            return '';
+        }
+        return `src:${sourceStr} => tpl:${template}`;
     }
 })()
 
@@ -49,5 +66,5 @@ if (fs.existsSync(configPath)) {
     userConfig = require(configPath);
 }
 
-
-module.exports = Object.assign({}, defaultConfig, userConfig);
+let config = Object.assign({}, defaultConfig, userConfig);
+module.exports = config

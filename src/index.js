@@ -58,7 +58,7 @@ function run(paths,options) {
     
     let end = Date.now();
     let spend = ((end - start) / 1000).toFixed(2);
-    log(`执行完毕！时长：${spend}s`)
+    log(`执行完毕！替换词条数${expressionTraverse.keyLen};时长：${spend}s`)
 }
 
 if (module === require.main) {

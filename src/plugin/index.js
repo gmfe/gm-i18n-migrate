@@ -31,7 +31,7 @@ let visitor = {
                 map[p.getSource().trim()] = true;
                 return map;
             },{})
-            if(imported[config.importStatementStr]){
+            if(imported[config.importStatementStr.trim()]){
                 return;
             }
 
@@ -60,8 +60,13 @@ let visitor = {
         expressionTraverse.traverse(path);
     },
     JSXText(path) {
-        // JSXText 目前就直接替换
-        expressionTraverse.traverseByRoot(path);
+        // 尝试解析多个
+        if(config.jsxtext){
+            expressionTraverse.traverseJSXText(path)
+        }else{
+            // JSXText 目前就直接替换
+            expressionTraverse.traverseByRoot(path);
+        }
     },
     
 }

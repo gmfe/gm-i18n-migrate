@@ -8,17 +8,22 @@
         {
             "type": "node",
             "request": "launch",
-            "name": "启动程序",
-            "program": "${workspaceFolder}/src/index.js"
+            "name": "启动",
+            "program": "${workspaceFolder}/bin/cli.js",
+            "args": [
+                "scan",
+                "./cases/"
+            ]
         },
         {
             "type": "node",
             "request": "launch",
-            "name": "test",
+            "name": "测试jsx",
             "program": "${workspaceFolder}/bin/cli.js",
             "args": [
                 "scan",
-                "./cases"
+                "--jsxtext",
+                "./cases/"
             ]
         }
     ]

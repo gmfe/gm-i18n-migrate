@@ -1,6 +1,7 @@
 const config = require('../config')
 const recast = require('recast')
 const codeFrameColumns = require('babel-code-frame');
+const t = require('babel-types')
 
 exports.isChinese = (text) => {
     return /[\u4e00-\u9fa5]/.test(text);
@@ -30,12 +31,19 @@ exports.hasTransformedPath = (path) => {
     return false;
 }
 
-
+exports.isMomentFormat = (rootPath) => {
+    let parentNode = rootPath.parent;
+    return t.isCallExpression(parentNode)
+        && t.isMemberExpression(parentNode.callee)
+        && t.isIdentifier(parentNode.callee.property)
+        && parentNode.callee.property.name === 'format'
+}
 
 exports.parseStr = (str) => {
     return recast.parse(str).program.body[0];
 }
 exports.getMetaFromPath = (path) => {
+    path = this.safePath(path)
     let info = {
         filename: path.hub.file.log.filename,
         source: path.getSource(),
@@ -52,6 +60,7 @@ exports.getMetaFromPath = (path) => {
     return info
 }
 exports.getErrorMsg = (msg,path)=>{
+    path = this.safePath(path)
     const { node } = path;
     const rawCode = path.hub.file.code;
     let extraInfo = `${JSON.stringify(this.getMetaFromPath(path))}`;
@@ -62,7 +71,19 @@ exports.getErrorMsg = (msg,path)=>{
     const errMessage = `${msg}\n${extraInfo}`;
     return errMessage;
 }
-
+exports.makeComment = (comment) => {
+    comment = `${comment.replace(/\/\*/, 'Comment: ').replace(/\*\//, ' :Comment')}`;
+    return comment ? `/* ${comment} */` : ''
+}
+exports.getSource = (p)=>{
+    return this.safePath(p).getSource().trim();
+}
+exports.safePath = (path)=>{
+    if(Array.isArray(path)){
+        return path[0].parentPath;
+    }
+    return path;
+}
 exports.throwError = (msg, path) => {
     if(config.debug){
         throw new Error(this.getErrorMsg(msg, path));
