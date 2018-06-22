@@ -1,8 +1,5 @@
 let config = require('../config')
 let util = require('../core/util')
-const {
-    transform
-} = require('./transformer')
 const fs = require('fs-extra');
 const t = require('babel-types')
 const p = require('path');
@@ -87,12 +84,24 @@ class ExpressionTraverse {
     constructor() {
         this.store = {};
         this.resource = null;
+        this.ctx = {}
     }
     start(files) {
-        const transformPlugin = require('../plugin');
+        const {
+            transformFile,transformCode
+        } = require('./transformer');
+
         let fileHelper = new FileHelper();
         files.forEach((filePath) => {
-            const code = transform(filePath, transformPlugin)
+            // key命名以文件为单位
+            this.ctx.keyStrategy = config.strategy.keyStrategyFactory();
+
+            // 需要先format
+            let rawCode = String(fs.readFileSync(filePath));
+            rawCode = rawCode.replace(/\t/g,'    '); 
+            fs.outputFileSync(filePath,rawCode);
+
+            const code = transformFile(filePath)
             // 文件更新替换为 i18n.get 
             fileHelper.write(filePath, code);
         });
@@ -141,7 +150,7 @@ class ExpressionTraverse {
         return this.traverseByRoot(textPath);
     }
     buildExpression(rootPath) {
-        let exp = new Expression(rootPath)
+        let exp = new Expression(rootPath,this.ctx)
         let result = exp.evaluate();
         if (result == null) {
             // 计算不了的情况 

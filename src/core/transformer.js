@@ -1,45 +1,52 @@
 
 const babel = require('babel-core')
 const recast = require('recast')
+const transformPlugin = require('../plugin')
+let opts = {
+    parserOpts: {
+        parser: recast.parse,
+        plugins: [
+            "asyncGenerators",
+            "bigInt",
+            "classPrivateMethods",
+            "classPrivateProperties",
+            "classProperties",
+            "decorators",
+            "decorators-legacy",
+            "doExpressions",
+            "dynamicImport",
+            "exportDefaultFrom",
+            "exportExtensions",
+            "exportNamespaceFrom",
+            "functionBind",
+            "functionSent",
+            "importMeta",
+            "nullishCoalescingOperator",
+            "numericSeparator",
+            "objectRestSpread",
+            "optionalCatchBinding",
+            "optionalChaining",
+            "pipelineOperator",
+            "throwExpressions",
+            'classConstructorCall',
+            'jsx',
+        ],
+    },
+    generatorOpts: {
+        generator: recast.print,
+    },
+    plugins: [transformPlugin],
+    babelrc: false,
+    // sourceMaps: true,
+}
 
-function transform(filename, transformPlugin) {
-    let result = babel.transformFileSync(filename, {
-        parserOpts: {
-            parser: recast.parse,
-            plugins: [
-                "asyncGenerators",
-                "bigInt",
-                "classPrivateMethods",
-                "classPrivateProperties",
-                "classProperties",
-                "decorators",
-                "decorators-legacy",
-                "doExpressions",
-                "dynamicImport",
-                "exportDefaultFrom",
-                "exportExtensions",
-                "exportNamespaceFrom",
-                "functionBind",
-                "functionSent",
-                "importMeta",
-                "nullishCoalescingOperator",
-                "numericSeparator",
-                "objectRestSpread",
-                "optionalCatchBinding",
-                "optionalChaining",
-                "pipelineOperator",
-                "throwExpressions",
-                'classConstructorCall',
-                'jsx',
-            ],
-        },
-        generatorOpts: {
-            generator: recast.print,
-        },
-        plugins: [transformPlugin],
-        babelrc: false,
-        // sourceMaps: true,
-    });
+function transformCode(code) {
+    let result = babel.transform(code, opts);
+    return result.code;
+}
+
+function transformFile(filename) {
+    let result = babel.transformFileSync(filename, opts);
     // const result = babel.transformFileSync(filename, {
     //     presets: ['babel-preset-es2015', 'babel-preset-stage-0',].map(require.resolve),
     //     plugins: [
@@ -54,5 +61,5 @@ function transform(filename, transformPlugin) {
 
 
 module.exports = {
-    transform
+    transformCode,transformFile
 }

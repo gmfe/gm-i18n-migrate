@@ -21,20 +21,21 @@ let defaultConfig = {
 }
 
 let strategy = defaultConfig.strategy = {};
-strategy.keyStrategy = (() => {
+strategy.keyStrategyFactory = (() => {
     let counter = 1;
     return ({
         template,
-        filePath,
-        meta
+        path,
     }) => {
+        let util = require('../core/util')
         // 没有变量
         if(!template.includes(config.interpolation.prefix)){
             return `${template}`;
         }
-        return `KEY${counter++}`;
+        return `KEY${util.getLocation(path)}`
+        // return `KEY${counter++}`;
     }
-})()
+})
 strategy.commentStrategy = (() => {
     let counter = 1;
     return ({
@@ -52,9 +53,7 @@ strategy.commentStrategy = (() => {
 strategy.variableStrategy = (() => {
     let counter = 1;
     return ({
-        identifier,
-        filePath,
-        meta
+        path,
     }) => {
         return `VAR${counter++}`;;
     }

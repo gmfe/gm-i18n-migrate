@@ -28,7 +28,7 @@ function staticCaseHandler(path) {
 
 function variableCaseHandler(path) {
     let node = path.node;
-    let variableName = config.strategy.variableStrategy({});
+    let variableName = config.strategy.variableStrategy({path});
     let template = `${prefix}${variableName}${suffix}`;
     let param = null;
     switch (node.type) {
@@ -169,10 +169,11 @@ function recursiveCall(path) {
 
 
 class Expression {
-    constructor(path) {
+    constructor(path,ctx) {
         // rootPath可能是数组  JSXElment的children
         this.curRootPath = path;
         this.resourceInfo = null;
+        this.ctx = ctx;
     }
     evaluatePath(path) {
         let result = {};
@@ -219,11 +220,11 @@ class Expression {
         return this.curRootPath;
     }
     replaceSource(template, param) {
-        // 一个表达式一个key
-        let key = config.strategy.keyStrategy({
-            template
-        });
         let path = this.curRootPath;
+        // 一个表达式一个key
+        let key = this.ctx.keyStrategy({
+            template, path
+        });
         this.resourceInfo = {
             [key]: {
                 ...util.getMetaFromPath(path),

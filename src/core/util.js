@@ -47,17 +47,22 @@ exports.getMetaFromPath = (path) => {
     let info = {
         filename: path.hub.file.log.filename,
         source: this.getSource(path),
+        location:this.getLocation(path)
     };
-   let loc = path.node.loc;
-   if(loc){
-    let {
-        start,
-        end
-    } = loc
-    info.start = `${start.line}:${start.column}`;
-    info.end = `${end.line}:${end.column}`;
-   }
+  
     return info
+}
+exports.getLocation = (path) => {
+    path = this.safePath(path)
+    let loc = path.node.loc;
+    if (loc) {
+        let {
+            start,
+            end
+        } = loc
+        return `${start.line}:${start.column}-${end.line}:${end.column}`;
+    }
+    return '';
 }
 exports.getErrorMsg = (msg,path)=>{
     path = this.safePath(path)
@@ -77,8 +82,8 @@ exports.makeComment = (comment) => {
     return comment ? `/* ${comment} */` : ''
 }
 exports.getSource = (p)=>{
-    // return this.safePath(p).getSource().trim();
-    return this.getSourceFromLoc(this.safePath(p))
+    return this.safePath(p).getSource().trim();
+    // return this.getSourceFromLoc(this.safePath(p))
 }
 exports.getSourceFromLoc = (path)=>{
     let code = path.hub.file.code;
