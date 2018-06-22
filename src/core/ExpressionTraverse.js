@@ -94,8 +94,8 @@ class ExpressionTraverse {
         let fileHelper = new FileHelper();
         files.forEach((filePath) => {
             // key命名以文件为单位
-            this.ctx.keyStrategy = config.strategy.keyStrategyFactory();
-
+            // this.ctx.keyStrategy = config.strategy.keyStrategyFactory();
+            this.ctx.keyStrategy = config.strategy.keyStrategy;
             // 需要先format
             let rawCode = String(fs.readFileSync(filePath));
             rawCode = rawCode.replace(/\t/g,'    '); 

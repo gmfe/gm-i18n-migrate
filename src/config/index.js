@@ -36,6 +36,20 @@ strategy.keyStrategyFactory = (() => {
         // return `KEY${counter++}`;
     }
 })
+strategy.keyStrategy = (() => {
+    let counter = 1;
+    return ({
+        template,
+        path,
+    }) => {
+        let util = require('../core/util')
+        // 没有变量
+        if(!template.includes(config.interpolation.prefix)){
+            return `${template}`;
+        }
+        return `KEY${counter++}`;
+    }
+})()
 strategy.commentStrategy = (() => {
     let counter = 1;
     return ({
