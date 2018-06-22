@@ -6,8 +6,8 @@ let defaultConfig = {
     resourceDir: 'resource',
     outputDir: 'out',
     exclude: [],
-    callStatement: 'I18N.get',
-    importStatementStr: "import { I18N } from '@common/I18N';\n",
+    callStatement: 'i18next.t',
+    importStatementStr: "import {i18next} from 'gm-i18n';\n",
     debug: false,
     // key分隔符
     keySeparator: '#',
