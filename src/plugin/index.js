@@ -24,6 +24,9 @@ function shouldExclude(path){
 // 通过 traverse 找到最顶层的表达式
 let visitor = {
     Program:{
+        enter(path){
+           let c = path.hub.file.code
+        },
         exit(path) { // 添加 import
             const imported = path.get("body")
             .filter(p => p.isImportDeclaration())

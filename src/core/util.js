@@ -46,7 +46,7 @@ exports.getMetaFromPath = (path) => {
     path = this.safePath(path)
     let info = {
         filename: path.hub.file.log.filename,
-        source: path.getSource(),
+        source: this.getSource(path),
     };
    let loc = path.node.loc;
    if(loc){
@@ -66,7 +66,8 @@ exports.getErrorMsg = (msg,path)=>{
     let extraInfo = `${JSON.stringify(this.getMetaFromPath(path))}`;
     if (node.loc) {
       let { line, column } = node.loc.start
-      extraInfo = `${path.hub.file.log.filename}:\n${codeFrameColumns(rawCode, line, column, )}`;
+      extraInfo = `${path.hub.file.log.filename}:${line}:${column}
+      ${codeFrameColumns(rawCode, line, column, {highlightCode:true})}`;
     }
     const errMessage = `${msg}\n${extraInfo}`;
     return errMessage;
@@ -76,8 +77,31 @@ exports.makeComment = (comment) => {
     return comment ? `/* ${comment} */` : ''
 }
 exports.getSource = (p)=>{
-    return this.safePath(p).getSource().trim();
+    // return this.safePath(p).getSource().trim();
+    return this.getSourceFromLoc(this.safePath(p))
 }
+exports.getSourceFromLoc = (path)=>{
+    let code = path.hub.file.code;
+    let {start,end} = path.node.loc;
+
+    let srcCode = []
+    let {column:sColumn,line:sRow} = start;
+    let {column:eColumn,line:eRow} = end;
+    const NEWLINE = /\r\n|[\n\r\u2028\u2029]/;
+    const lines = code.split(NEWLINE);
+    if(eRow === sRow){
+        srcCode.push(lines[sRow-1].slice(sColumn,eColumn));
+    }else{
+        while(sRow<eRow){
+            srcCode.push(lines[sRow-1].slice(sColumn));
+            sRow++;
+        }
+        srcCode.push(lines[sRow-1].slice(0,eColumn))
+        console.log(srcCode);
+    }
+    return srcCode.join('');
+}
+
 exports.safePath = (path)=>{
     if(Array.isArray(path)){
         return path[0].parentPath;
