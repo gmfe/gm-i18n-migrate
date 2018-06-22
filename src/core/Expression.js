@@ -20,7 +20,7 @@ function staticCaseHandler(path) {
         case 'StringLiteral':
         case 'JSXText':
             return {
-                template: node.value.trim()
+                template: node.value
             };
     }
     return null;
@@ -103,7 +103,7 @@ function dynamicCaseHandler(path) {
             for (const elem of (path.node.quasis)) {
                 // 字符
                 if (elem.value.cooked) {
-                    template += elem.value.cooked.trim();
+                    template += elem.value.cooked;
                 }
 
                 if (index < expressions.length) {
@@ -207,7 +207,6 @@ class Expression {
             // 不用处理
             return null;
         }
-        template = template.replace(/\s+/g, '').replace(/(:|：)$/g, '');
         // template没有中文
         if (!util.isChinese(template)) {
             return null;
@@ -219,31 +218,42 @@ class Expression {
     getPath() {
         return this.curRootPath;
     }
-    replaceSource(template, param) {
+    replaceSource(originalTemplate, param) {
         let path = this.curRootPath;
+        let resouceTemplate = originalTemplate;
+
+        if(t.isJSXText(path.node)){
+             // JSXText去除冒号
+             resouceTemplate = originalTemplate.replace(/(:|：)$/g, ''); 
+        }
+
+        if(t.isJSXText(path.node)){
+          // 去除JSXText回车
+          resouceTemplate = resouceTemplate.replace(/\n+/g,'');
+        }
         // 一个表达式一个key
         let key = this.ctx.keyStrategy({
-            template, path
+            template:resouceTemplate, path
         });
         this.resourceInfo = {
             [key]: {
                 ...util.getMetaFromPath(path),
-                template,
+                template:resouceTemplate,
             }
         };
         let comment = util.makeComment(config.strategy.commentStrategy({
-            template,
+            template:resouceTemplate,
             sourceStr: util.getSource(path)
         }));
-        let sourceStr = `${config.callStatement}('${key}')${comment}`;
+        let replaceStr = `${config.callStatement}('${key}')${comment}`;
         if (param) {
-            sourceStr = `${config.callStatement}('${key}',{${param}})${comment}`;
+            replaceStr = `${config.callStatement}('${key}',{${param}})${comment}`;
         }
 
         try {
             let {
                 expression
-            } = util.parseStr(sourceStr);
+            } = util.parseStr(replaceStr);
             // 特殊情况处理 []
             // jsx 
             if (Array.isArray(path)) {
@@ -253,9 +263,21 @@ class Expression {
                 } else {
                     util.throwError('不能解析的数组path', parentPath)
                 }
-            } else if (t.isJSXText(path.node) // 单独解析的JSXText
-                ||
-                t.isJSXAttribute(path.parent)) {
+            } else if (t.isJSXText(path.node)) {
+             
+                // let srcCode = util.getSource(path, false);
+                // let regex = new RegExp(`^((?:(?:&nbsp;)|\\s)*)${util.escapeRegExp(originalTemplate.trim())}((?:(?:&nbsp;)|[\\s:：])*)$`);
+                // let matchResult = srcCode.match(regex);
+                // util.assert(matchResult == null, 'JSXText正则写错了', path)
+                // let [, prefixPadding, suffixPadding] = matchResult;
+
+                let suffix = /[:：]/.test(originalTemplate)?':':'';
+                path.replaceWithMultiple([
+                    t.JSXExpressionContainer(expression),
+                    t.JSXText(suffix)
+                ]);
+            }
+            else if (t.isJSXAttribute(path.parent)) {
                 path.replaceWith(
                     t.JSXExpressionContainer(expression)
                 );
@@ -267,7 +289,7 @@ class Expression {
                 path.replaceWith(expression)
             }
         } catch (err) {
-            util.throwError(`表达式替换失败:${err.message}\n${sourceStr}`, path)
+            util.throwError(`表达式替换失败:${err.message}\n${replaceStr}`, path)
         }
     }
 

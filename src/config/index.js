@@ -30,6 +30,7 @@ strategy.keyStrategyFactory = (() => {
         let util = require('../core/util')
         // 没有变量
         if(!template.includes(config.interpolation.prefix)){
+            
             return `${template}`;
         }
         return `KEY${util.getLocation(path)}`

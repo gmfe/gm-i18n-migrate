@@ -81,8 +81,9 @@ exports.makeComment = (comment) => {
     comment = `${comment.replace(/\/\*/, 'Comment: ').replace(/\*\//, ' :Comment')}`;
     return comment ? `/* ${comment} */` : ''
 }
-exports.getSource = (p)=>{
-    return this.safePath(p).getSource().trim();
+exports.getSource = (p, trim = true) => {
+    let code = this.safePath(p).getSource()
+    return trim ? code.trim() : code;
     // return this.getSourceFromLoc(this.safePath(p))
 }
 exports.getSourceFromLoc = (path)=>{
@@ -133,3 +134,6 @@ exports.assert = (condition, msg, path) => {
         this.throwError(msg, path);
     }
 }
+exports.escapeRegExp = (str) => {
+    return str.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, "\\$&");
+  }
