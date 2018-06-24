@@ -58,8 +58,6 @@ class Expression {
 
     variableCaseHandler(path) {
         let node = path.node;
-        let variableName = this.variableStrategy.get();
-        let template = `${prefix}${variableName}${suffix}`;
         let param = null;
         switch (node.type) {
             case 'JSXEmptyExpression': //空语句不管
@@ -73,14 +71,14 @@ class Expression {
             case 'CallExpression':
             case 'MemberExpression':
             case 'ConditionalExpression':
-                param = `${variableName}:${util.getSource(path)},`
+                param = `${util.getSource(path)},`
                 break;
             case 'BinaryExpression': //数学运算
                 let {
                     operator
                 } = node;
                 if (variableOperator.includes(operator)) {
-                    param = `${variableName}:${util.getSource(path)},`
+                    param = `${util.getSource(path)},`
                 } else if (operator === '+') { // 由字符串入口进来
                     let {
                         left,
@@ -88,15 +86,18 @@ class Expression {
                     } = node;
                     if (isVariableNumerLiteral(left, right) ||
                         isVariableNumerLiteral(right, left)) {
-                        param = `${variableName}:${util.getSource(path)},`
+                        param = `${util.getSource(path)},`
                     }
                 }
                 break;
             case 'Identifier':
-                param = `${variableName}:${node.name},`
+                param = `${node.name},`
                 break;
         }
         if (param) {
+            let variableName = this.variableStrategy.get();
+            param = `${variableName}:${param}`;
+            let template = `${prefix}${variableName}${suffix}`;
             return {
                 param,
                 template
@@ -135,7 +136,7 @@ class Expression {
 
                     if (index < expressions.length) {
                         const expr = expressions[index++];
-                        // 认为expr都是变量 省略不必要的判断
+                        // 简单处理 认为expr都是变量 
                         let variableName = this.variableStrategy.get();
                         template += `${prefix}${variableName}${suffix}`;
                         param.push(`${variableName}:${util.getSource(expr)}`);

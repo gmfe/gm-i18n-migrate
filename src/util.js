@@ -8,7 +8,7 @@ exports.isChinese = (text) => {
     return /[\u4e00-\u9fa5]/.test(text);
 }
 
-exports.hasTransformedString = (path) => {
+exports.parentPathHasTransformed = (path) => {
     return this.hasTransformedPath(path.parentPath)
 }
 exports.hasTransformedPath = (path) => {

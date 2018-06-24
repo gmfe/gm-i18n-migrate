@@ -44,13 +44,13 @@ function sync(paths,options) {
     let start = Date.now();
     Object.assign(config,options);
     let filePaths = resolvePaths(paths);
-    util.log(`扫描文件数：${filePaths.length}`)
+    util.log(`正在同步...文件数：${filePaths.length}`)
     let traverser = new ExpressionTraverse();
     traverser.syncResource(filePaths);
     
     let end = Date.now();
     let time = ((end - start) / 1000).toFixed(2);
-    util.log(`执行完毕！修改词条数${traverser.keyLen};时长：${time}s`)
+    util.log(`执行完毕！修改词条数${traverser.changedKeys};时长：${time}s`)
 }
 module.exports = {
     scan,sync

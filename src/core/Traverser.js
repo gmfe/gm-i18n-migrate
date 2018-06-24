@@ -63,8 +63,9 @@ function isRootParentPath(path) {
 
 class Traverser {
     constructor() {
-        this.sourcemap = {};
+        this.sourcemapData = {};
         this.extraKeys = {};
+        this.changedCount = 0;
         this.setup();
     }
     setup() {
@@ -78,7 +79,7 @@ class Traverser {
             commentStrategy: new CommentStrategy(),
         }
     }
-    syncResource(files){
+    syncResource(files) {
         const {
             transformFile
         } = initTransformer([syncPlugin(this)]);
@@ -87,30 +88,34 @@ class Traverser {
             transformFile(filePath)
         });
         let sourcemap = fileHelper.getSourceMapContent();
-        if(!sourcemap){
+        if (!sourcemap) {
             return;
         }
-        
+
         let sourceData = sourcemap.data;
         // 不能直接覆盖 因为拿不到模板
         // 删除多余的
-        Object.keys(sourceData).forEach((key)=>{
-            if(!this.extraKeys.hasOwnProperty(key)){
+        Object.keys(sourceData).forEach((key) => {
+            if (!this.extraKeys.hasOwnProperty(key)) {
+                this.changedCount++;
                 delete sourceData[key];
             }
         })
-         // 添加新的 需要手动去写模板
-         Object.keys(this.extraKeys).forEach((key)=>{
-            if(!sourceData.hasOwnProperty(key)){
+        // 添加新的 需要手动去写模板
+        Object.keys(this.extraKeys).forEach((key) => {
+            if (!sourceData.hasOwnProperty(key)) {
+                this.changedCount++;
                 sourceData[key] = this.extraKeys[key];
             }
         })
-        this.writeLang(sourceData);
-        fileHelper.writeSourceMap(sourcemap);
+        if(this.changedCount > 0){
+            this.writeLang(sourceData);
+            fileHelper.writeSourceMap(sourcemap);
+        }
     }
-    addKey(path,key){
+    addKey(path, key) {
         // 默认key作template
-        this.extraKeys[key] = util.getKeyInfo(path,key);
+        this.extraKeys[key] = util.getKeyInfo(path, key);
     }
     traverseFiles(files) {
         const {
@@ -134,7 +139,7 @@ class Traverser {
             return false;
         }
 
-        Object.assign(this.sourcemap, result);
+        Object.assign(this.sourcemapData, result);
         return true;
     }
     findRoot(path) {
@@ -152,9 +157,10 @@ class Traverser {
         return rootPath;
     }
     traverseNodePath(path) {
+        util.debug(`接收到Path`,path)
         // path 只可能为 String Template
-        // 已经是I8N
-        if (util.hasTransformedString(path)) {
+        // 已经是I8N的String 用于第二次扫描时判断逻辑
+        if (util.parentPathHasTransformed(path)) {
             return;
         }
         // 特殊的语句
@@ -163,17 +169,17 @@ class Traverser {
         }
         // root 代表 expression的起点
         let rootPath = this.findRoot(path);
-        if(rootPath == null){
+        if (rootPath == null) {
             util.warn('找不到root的场景', path)
             return;
         }
         this.traverseRootPath(rootPath);
     }
     traverseJSXText(textPath) {
-         if (!config.fixjsx) {
+        if (!config.fixjsx) {
             // 默认独立解析
             return this.traverseRootPath(textPath);
-         }
+        }
 
         let jsxElement = textPath.find((p) => t.isJSXElement(p));
         let childrenPaths = jsxElement.get('children');
@@ -204,9 +210,10 @@ class Traverser {
             !util.isChinese(rootPath.node.value)) {
             return;
         }
-        if (util.hasTransformedString(rootPath)) {
-            // 已经是 i18n 函数
-            util.warn(`重复遍历的rootPath：`, rootPath)
+        if (util.parentPathHasTransformed(rootPath)) {
+            // rootPath在第一个String出现时 就会替换成i18n
+            // 但是之前的rootpath下的子节点还是会遍历
+            util.debug(`重复遍历的rootPath：`, rootPath)
             return;
         }
         // 是moment
@@ -216,25 +223,25 @@ class Traverser {
 
         this.buildExpression(rootPath)
     }
-    writeLang(sourcemap){
+    writeLang(sourcemap) {
         let langResource = Object.entries(sourcemap)
-        .reduce((accm, [key, o]) => {
-            accm[key] = o.template;
-            return accm;
-        }, {})
+            .reduce((accm, [key, o]) => {
+                accm[key] = o.template;
+                return accm;
+            }, {})
         // 多语资源文件
         fileHelper.writeLang(langResource)
     }
     writeResourceByMerge() {
         let oldSourcemap = fileHelper.getSourceMapContent();
-        let toWriteSouceMap = this.sourcemap;
-        if(oldSourcemap){
-            toWriteSouceMap = Object.assign(oldSourcemap.data,this.sourcemap)
+        let toWriteSouceMap = this.sourcemapData;
+        if (oldSourcemap) {
+            toWriteSouceMap = Object.assign(oldSourcemap.data, this.sourcemapData)
         }
 
         this.writeLang(toWriteSouceMap);
         let nextKeyNum = this.ctx.keyStrategy.count;
-        toWriteSouceMap= {
+        toWriteSouceMap = {
             data: toWriteSouceMap,
             meta: {
                 nextKeyNum
@@ -243,9 +250,11 @@ class Traverser {
         // 映射文件
         fileHelper.writeSourceMap(toWriteSouceMap)
     }
+    get changedKeys(){
+        return this.changedCount;
+    }
     get keyLen() {
-        let keys = this.sourcemap || this.extraKeys
-        return Object.keys(keys).length;
+        return Object.keys(this.sourcemapData).length;
     }
 }
 module.exports = Traverser;
