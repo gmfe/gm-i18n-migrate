@@ -1,19 +1,30 @@
 #!/usr/bin/env node
 
 let program = require('commander');
-const {run} = require('../src')
+const {
+    scan,
+    sync
+} = require('../src')
 program
     .command('scan [paths...]')
-    .option('--rewrite','覆盖已有文件')
-    .option('--jsxtext','尝试整体解析JSXText')
+    .option('--rewrite', '覆盖已有文件')
+    .option('--fixjsx', '尝试整体解析JSXText')
     // .option('--rule <ruleName>', 'inspect a specific module rule')
     // .option('--plugin <pluginName>', 'inspect a specific plugin')
     // .option('--rules', 'list all module rule names')
     // .option('--plugins', 'list all plugin names')
     .description('扫描指定路径，提取资源文件并替换字符串为i18n')
     .action((paths, cmd) => {
-        run(paths, cleanArgs(cmd))
+        scan(paths, cleanArgs(cmd))
     })
+
+program
+    .command('sync [paths...]')
+    .description('将资源文件与指定路径文件中的i18n信息同步')
+    .action((paths, cmd) => {
+        sync(paths, cleanArgs(cmd))
+    })
+
 
 program.parse(process.argv)
 

@@ -1,4 +1,5 @@
-const config = require('../config')
+const config = require('./config')
+const fileHelper = require('./core/fileHelper')
 const recast = require('recast')
 const codeFrameColumns = require('babel-code-frame');
 const t = require('babel-types')
@@ -7,21 +8,12 @@ exports.isChinese = (text) => {
     return /[\u4e00-\u9fa5]/.test(text);
 }
 
-exports.hasTransformed = (path) => {
-    if (path.parent.type === "CallExpression" &&
-        path.parent.callee.type === "MemberExpression") {
-        let name = path.parent.callee.object.name
-        let fn = path.parent.callee.property.name
-        if (`${name}.${fn}` === config.callStatement) {
-            return true;
-        }
-        // 已经转换过
-    }
-    return false;
+exports.hasTransformedString = (path) => {
+    return this.hasTransformedPath(path.parentPath)
 }
 exports.hasTransformedPath = (path) => {
-    if (path.node.type === "CallExpression" &&
-        path.node.callee.type === "MemberExpression") {
+    if (t.isCallExpression(path.node) &&
+        t.isMemberExpression(path.node.callee)) {
         let name = path.node.callee.object.name
         let fn = path.node.callee.property.name
         if (`${name}.${fn}` === config.callStatement) {
@@ -33,23 +25,30 @@ exports.hasTransformedPath = (path) => {
 
 exports.isMomentFormat = (rootPath) => {
     let parentNode = rootPath.parent;
-    return t.isCallExpression(parentNode)
-        && t.isMemberExpression(parentNode.callee)
-        && t.isIdentifier(parentNode.callee.property)
-        && parentNode.callee.property.name === 'format'
+    return t.isCallExpression(parentNode) &&
+        t.isMemberExpression(parentNode.callee) &&
+        t.isIdentifier(parentNode.callee.property) &&
+        parentNode.callee.property.name === 'format'
 }
 
 exports.parseStr = (str) => {
     return recast.parse(str).program.body[0];
 }
+exports.getKeyInfo = (path, template) => {
+    return {
+            ...this.getMetaFromPath(path),
+            template,
+        
+    };
+}
 exports.getMetaFromPath = (path) => {
     path = this.safePath(path)
     let info = {
-        filename: path.hub.file.log.filename,
+        filename: fileHelper.formatFilePath(path.hub.file.log.filename),
         source: this.getSource(path),
-        location:this.getLocation(path)
+        location: this.getLocation(path)
     };
-  
+
     return info
 }
 exports.getLocation = (path) => {
@@ -64,14 +63,19 @@ exports.getLocation = (path) => {
     }
     return '';
 }
-exports.getErrorMsg = (msg,path)=>{
+exports.getErrorMsg = (msg, path) => {
     path = this.safePath(path)
-    const { node } = path;
+    const {
+        node
+    } = path;
     const rawCode = path.hub.file.code;
     let extraInfo = `${JSON.stringify(this.getMetaFromPath(path))}`;
     if (node.loc) {
-      let { line, column } = node.loc.start
-      extraInfo = `${path.hub.file.log.filename}:${line}:${column}
+        let {
+            line,
+            column
+        } = node.loc.start
+        extraInfo = `${path.hub.file.log.filename}:${line}:${column}
       ${codeFrameColumns(rawCode, line, column, {highlightCode:true})}`;
     }
     const errMessage = `${msg}\n${extraInfo}`;
@@ -86,54 +90,38 @@ exports.getSource = (p, trim = true) => {
     return trim ? code.trim() : code;
     // return this.getSourceFromLoc(this.safePath(p))
 }
-exports.getSourceFromLoc = (path)=>{
-    let code = path.hub.file.code;
-    let {start,end} = path.node.loc;
 
-    let srcCode = []
-    let {column:sColumn,line:sRow} = start;
-    let {column:eColumn,line:eRow} = end;
-    const NEWLINE = /\r\n|[\n\r\u2028\u2029]/;
-    const lines = code.split(NEWLINE);
-    if(eRow === sRow){
-        srcCode.push(lines[sRow-1].slice(sColumn,eColumn));
-    }else{
-        while(sRow<eRow){
-            srcCode.push(lines[sRow-1].slice(sColumn));
-            sRow++;
-        }
-        srcCode.push(lines[sRow-1].slice(0,eColumn))
-        console.log(srcCode);
-    }
-    return srcCode.join('');
-}
-
-exports.safePath = (path)=>{
-    if(Array.isArray(path)){
+exports.safePath = (path) => {
+    if (Array.isArray(path)) {
         return path[0].parentPath;
     }
     return path;
 }
-exports.throwError = (msg, path) => {
-    if(config.debug){
+exports.error = (msg, path) => {
+    if (config.debug) {
         throw new Error(this.getErrorMsg(msg, path));
     }
     this.warn(msg, path);
 }
-
-exports.log = (msg,path) => {
-    if(config.debug){
-        return console.log.call(console, `${msg}\n${JSON.stringify(this.getMetaFromPath(path))}`);
-    } 
+exports.throwError = (msg, path) => {
+    throw new Error(this.getErrorMsg(msg, path));
 }
-exports.warn = (msg,path) => {
-    return console.warn.call(console, this.getErrorMsg(msg,path));
+exports.log = (msg) => {
+    return console.log.call(console, msg);
+}
+exports.debug = (msg, path) => {
+    if (config.debug) {
+        return console.log.call(console, `debug:${msg}\n${JSON.stringify(this.getMetaFromPath(path))}`);
+    }
+}
+exports.warn = (msg, path) => {
+    return console.warn.call(console, this.getErrorMsg(msg, path));
 }
 exports.assert = (condition, msg, path) => {
-    if (condition) {
+    if (!condition) {
         this.throwError(msg, path);
     }
 }
 exports.escapeRegExp = (str) => {
     return str.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, "\\$&");
-  }
+}

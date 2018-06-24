@@ -1,13 +1,12 @@
-
 const babel = require('babel-core')
 const recast = require('recast')
-const transformPlugin = require('../plugin')
-let opts = {
+
+
+let defaultOpts = {
     parserOpts: {
         parser: recast.parse,
         plugins: [
             "asyncGenerators",
-            "bigInt",
             "classPrivateMethods",
             "classPrivateProperties",
             "classProperties",
@@ -35,17 +34,11 @@ let opts = {
     generatorOpts: {
         generator: recast.print,
     },
-    plugins: [transformPlugin],
     babelrc: false,
     // sourceMaps: true,
 }
 
-function transformCode(code) {
-    let result = babel.transform(code, opts);
-    return result.code;
-}
-
-function transformFile(filename) {
+function transformFile(filename, opts) {
     let result = babel.transformFileSync(filename, opts);
     // const result = babel.transformFileSync(filename, {
     //     presets: ['babel-preset-es2015', 'babel-preset-stage-0',].map(require.resolve),
@@ -58,8 +51,11 @@ function transformFile(filename) {
     return result.code;
 }
 
-
-
-module.exports = {
-    transformCode,transformFile
+module.exports = (plugins) => {
+    let opts = Object.assign({}, defaultOpts, {
+        plugins
+    })
+    return {
+        transformFile: (filename) => transformFile(filename, opts)
+    }
 }

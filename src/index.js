@@ -1,42 +1,13 @@
 const glob = require('glob');
 const fs = require('fs-extra');
 const p = require('path');
-let expressionTraverse = require('./core/ExpressionTraverse')
-let log = console.log.bind(console);
+const ExpressionTraverse = require('./core/Traverser')
+const util = require('./util');
 let config = require('./config')
 const {exclude} = config;
 
-/* 基本思路
-// 源字符串
-let s = `你好，${name}。欢迎来到${where}`
-
-// name where这些变量名确定
-let s = '你好，' + users[0].name + '。欢迎来到' + where.name
-
-// 替换
-let s = i18n.get('key#a',{name,where}) // 源字符串以注释形式显示   `你好，${name}。欢迎来到${where}` 
-
-// 提供 keyStrategy 自定义key生成逻辑
-
-// 可能还需要sourcemap，给出更详细的元信息
-
-// 提取出的中文资源文件 
-cnMap = {
-    "key":{
-        "a": "你好，{name}。欢迎来到 {where}!",
-    }
-}
-
-// 复制一份 用来翻译
-enMap = {
-    "key#1": "Hello, {name}. Welcome to {where}!",
-}
-*/
-
-function run(paths,options) {
+function resolvePaths(paths){
     let filePaths = [];
-    Object.assign(config,options);
-    log(`开始扫描文件...`)
     for(let path of paths){
         path = p.resolve(path);
         let stat = fs.statSync(path);
@@ -52,22 +23,35 @@ function run(paths,options) {
     if(filePaths.length == 0){
         throw new Error('请指定扫描路径!');
     }
+    return filePaths;
+}
+
+function scan(paths,options) {
     let start = Date.now();
-    log(`准备替换和提取多语...文件数：${filePaths.length}`)
-    expressionTraverse.start(filePaths);
+    Object.assign(config,options);
+    util.log(`开始扫描文件...`);
+    let filePaths = resolvePaths(paths);
+    
+    util.log(`正在替换和提取多语...文件数：${filePaths.length}`)
+    let traverser = new ExpressionTraverse();
+    traverser.traverseFiles(filePaths);
     
     let end = Date.now();
-    let spend = ((end - start) / 1000).toFixed(2);
-    log(`执行完毕！替换词条数${expressionTraverse.keyLen};时长：${spend}s`)
+    let time = ((end - start) / 1000).toFixed(2);
+    util.log(`执行完毕！替换词条数${traverser.keyLen};时长：${time}s`)
 }
-
-if (module === require.main) {
-    let targetPath = process.argv[2];
-    if(targetPath){
-        run(p.resolve(targetPath));
-    }
+function sync(paths,options) {
+    let start = Date.now();
+    Object.assign(config,options);
+    let filePaths = resolvePaths(paths);
+    util.log(`扫描文件数：${filePaths.length}`)
+    let traverser = new ExpressionTraverse();
+    traverser.syncResource(filePaths);
+    
+    let end = Date.now();
+    let time = ((end - start) / 1000).toFixed(2);
+    util.log(`执行完毕！修改词条数${traverser.keyLen};时长：${time}s`)
 }
-
 module.exports = {
-    run,
+    scan,sync
 };

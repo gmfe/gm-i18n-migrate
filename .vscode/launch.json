@@ -4,7 +4,7 @@
     // 欲了解更多信息，请访问: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
-        
+
         {
             "type": "node",
             "request": "launch",
@@ -12,7 +12,8 @@
             "program": "${workspaceFolder}/bin/cli.js",
             "args": [
                 "scan",
-                "./cases/"
+                "./cases/",
+                "--rewrite"
             ]
         },
         {
@@ -22,7 +23,18 @@
             "program": "${workspaceFolder}/bin/cli.js",
             "args": [
                 "scan",
-                "--jsxtext",
+                "--fixjsx",
+                "--rewrite",
+                "./cases/"
+            ]
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "测试sync",
+            "program": "${workspaceFolder}/bin/cli.js",
+            "args": [
+                "sync",
                 "./cases/"
             ]
         }
