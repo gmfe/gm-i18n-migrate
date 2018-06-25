@@ -219,8 +219,8 @@ class Expression {
     }
     buildReplaceStr(template, param) {
         let path = util.safePath(this.curRootPath);
-        if (t.isJSXText(path.node)) {
-            // JSXText去除冒号 回车
+        if (t.isJSXText(path.node) || t.isJSXAttribute(path.parent)) {
+            // JSXText JSXAttribute 去除冒号 回车
             template = template.replace(/\s+|[:：]\s*$/g, '');
         }
         // 一个表达式一个key
@@ -268,9 +268,20 @@ class Expression {
                     t.JSXText(suffixPadding)
                 ]);
             } else if (t.isJSXAttribute(path.parent)) {
-                path.replaceWith(
-                    t.JSXExpressionContainer(expression)
-                );
+                let value = path.node.value;
+                let sign = value.match(/[:：]$/);
+                if(sign){ // 冒号结尾
+                    path.replaceWith(
+                        t.JSXExpressionContainer(
+                            t.BinaryExpression('+',expression,t.stringLiteral(sign[0]))
+                        )
+                    );
+                }else{
+                    path.replaceWith(
+                        t.JSXExpressionContainer(expression)
+                    );
+                }
+                
             } else if (t.isObjectProperty(path.parent) &&
                 path.parentKey === 'key') { //对象属性的key { [‘中国’] }
                 path.parentPath.node.computed = true;
