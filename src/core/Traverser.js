@@ -66,6 +66,8 @@ class Traverser {
         this.sourcemapData = {};
         this.extraKeys = {};
         this.changedCount = 0;
+        this.removedKeys = [];
+        this.newKeys = [];
         this.setup();
     }
     setup() {
@@ -98,6 +100,7 @@ class Traverser {
         Object.keys(sourceData).forEach((key) => {
             if (!this.extraKeys.hasOwnProperty(key)) {
                 this.changedCount++;
+                this.removedKeys.push(key);
                 delete sourceData[key];
             }
         })
@@ -105,6 +108,7 @@ class Traverser {
         Object.keys(this.extraKeys).forEach((key) => {
             if (!sourceData.hasOwnProperty(key)) {
                 this.changedCount++;
+                this.newKeys.push(key);
                 sourceData[key] = this.extraKeys[key];
             }
         })
@@ -251,7 +255,11 @@ class Traverser {
         fileHelper.writeSourceMap(toWriteSouceMap)
     }
     get changedKeys(){
-        return this.changedCount;
+        return {
+            count:this.changedCount,
+            newKeys:this.newKeys,
+            removedKeys:this.removedKeys,
+        };
     }
     get keyLen() {
         return Object.keys(this.sourcemapData).length;

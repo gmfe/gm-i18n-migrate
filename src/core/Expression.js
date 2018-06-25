@@ -236,6 +236,8 @@ class Expression {
         }));
         let replaceStr = `${config.callStatement}('${key}')${comment}`;
         if (param) {
+            // eslint没有,
+            param = param.replace(/,$/,'');
             replaceStr = `${config.callStatement}('${key}',{${param}})${comment}`;
         }
         return replaceStr;

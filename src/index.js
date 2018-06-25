@@ -50,7 +50,8 @@ function sync(paths,options) {
     
     let end = Date.now();
     let time = ((end - start) / 1000).toFixed(2);
-    util.log(`执行完毕！修改词条数${traverser.changedKeys};时长：${time}s`)
+    let {count,removedKeys,newKeys} = traverser.changedKeys;
+    util.log(`执行完毕！修改词条数${count};时长：${time}s.\n新增: ${JSON.stringify(newKeys)}\n删除: ${JSON.stringify(removedKeys)}`)
 }
 module.exports = {
     scan,sync
