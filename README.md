@@ -30,6 +30,12 @@ i18n-migration scan [paths] --rewrite --fixjsx
 # 扫描指定路径文件中的i18n信息 与资源文件同步(添加新增的key，删除多余的key) 
 i18n-migration sync [paths] 
 
+# 比较两个资源文件，将差异输出到新文件
+i18n-migration diff [paths] 
+
+# 合并所有资源文件，合并后输出到新文件
+i18n-migration merge [paths] 
+
 ```
 
 ## config

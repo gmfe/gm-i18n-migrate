@@ -3,7 +3,7 @@
 let program = require('commander');
 const {
     scan,
-    sync
+    sync,merge,diff
 } = require('../src')
 program
     .command('scan [paths...]')
@@ -25,6 +25,21 @@ program
         sync(paths, cleanArgs(cmd))
     })
 
+program
+    .command('merge [paths...]')
+    .option('--out <filename>', '指定输出文件名')
+    .description('合并所有资源文件，合并后输出到新文件')
+    .action((paths, cmd) => {
+        merge(paths, cleanArgs(cmd))
+    })
+
+program
+    .command('diff [paths...]')
+    .option('--out <filename>', '指定输出文件名')
+    .description('比较两个资源文件，将差异输出到新文件')
+    .action((paths, cmd) => {
+        diff(paths, cleanArgs(cmd))
+    })
 
 program.parse(process.argv)
 

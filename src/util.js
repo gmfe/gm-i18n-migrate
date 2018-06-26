@@ -125,3 +125,9 @@ exports.assert = (condition, msg, path) => {
 exports.escapeRegExp = (str) => {
     return str.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, "\\$&");
 }
+exports.makeMap = (array) => {
+    return array.reduce((accm,key)=>{
+        accm[key] = true;
+        return accm;
+    },{})
+}
