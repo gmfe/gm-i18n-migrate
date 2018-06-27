@@ -7,7 +7,7 @@
     "test": "test"
   },
   "bin": {
-    "i18n-migration": "./bin/cli.js"
+    "i18n-m": "./bin/cli.js"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",

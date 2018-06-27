@@ -1,6 +1,7 @@
 let util = require('../util')
 let config = require('../config')
 const fileHelper = require('./fileHelper');
+const fs = require('fs-extra');
 const t = require('babel-types')
 const initTransformer = require('../plugin/transformer')
 const transformPlugin = require('../plugin/transformPlugin')
@@ -81,7 +82,29 @@ class Traverser {
             commentStrategy: new CommentStrategy(),
         }
     }
-    syncResource(files) {
+
+    syncJSON(oldJSON,newJSON,options){
+         // 不能直接覆盖 因为 插值情况newJSON拿不到模板
+        if (options.clean) {
+            Object.keys(oldJSON).forEach((key) => {
+                if (!newJSON.hasOwnProperty(key)) {
+                    this.changedCount++;
+                    this.removedKeys.push(key);
+                    delete oldJSON[key];
+                }
+            })
+        }
+
+        // 添加新的 需要手动去写模板
+        Object.keys(newJSON).forEach((key) => {
+            if (!oldJSON.hasOwnProperty(key)) {
+                this.changedCount++;
+                this.newKeys.push(key);
+                oldJSON[key] = newJSON[key];
+            }
+        })
+    }
+    syncResource(files, options) {
         const {
             transformFile
         } = initTransformer([syncPlugin(this)]);
@@ -89,33 +112,31 @@ class Traverser {
         files.forEach((filePath) => {
             transformFile(filePath)
         });
-        let sourcemap = fileHelper.getSourceMapContent();
-        if (!sourcemap) {
-            return;
+        if (options.jsonpath) {
+            // 后续与语言包同步
+            let oldJSON = fs.readJSONSync(options.jsonpath)
+            let newJSON = this.getLanguageFromSourcemap(this.extraKeys);
+            this.syncJSON(oldJSON,newJSON,options)
+          
+            if (this.changedCount > 0) {
+                fs.outputJSONSync(options.jsonpath, oldJSON);
+            }
+
+        } else {
+            // 第一次迁移时同步sourcemap与语言包
+            let sourcemap = fileHelper.getSourceMapContent();
+            if (!sourcemap) {
+                return;
+            }
+
+            let sourceData = sourcemap.data;
+            this.syncJSON(sourceData,this.extraKeys,options)
+            if (this.changedCount > 0) {
+                this.writeLang(sourceData);
+                fileHelper.writeSourceMap(sourcemap);
+            }
         }
 
-        let sourceData = sourcemap.data;
-        // 不能直接覆盖 因为拿不到模板
-        // 删除多余的
-        Object.keys(sourceData).forEach((key) => {
-            if (!this.extraKeys.hasOwnProperty(key)) {
-                this.changedCount++;
-                this.removedKeys.push(key);
-                delete sourceData[key];
-            }
-        })
-        // 添加新的 需要手动去写模板
-        Object.keys(this.extraKeys).forEach((key) => {
-            if (!sourceData.hasOwnProperty(key)) {
-                this.changedCount++;
-                this.newKeys.push(key);
-                sourceData[key] = this.extraKeys[key];
-            }
-        })
-        if(this.changedCount > 0){
-            this.writeLang(sourceData);
-            fileHelper.writeSourceMap(sourcemap);
-        }
     }
     addKey(path, key) {
         // 默认key作template
@@ -161,7 +182,7 @@ class Traverser {
         return rootPath;
     }
     traverseNodePath(path) {
-        util.debug(`接收到Path`,path)
+        util.debug(`接收到Path`, path)
         // path 只可能为 String Template
         // 已经是I8N的String 用于第二次扫描时判断逻辑
         if (util.parentPathHasTransformed(path)) {
@@ -227,12 +248,15 @@ class Traverser {
 
         this.buildExpression(rootPath)
     }
-    writeLang(sourcemap) {
-        let langResource = Object.entries(sourcemap)
+    getLanguageFromSourcemap(sourcemap) {
+        return Object.entries(sourcemap)
             .reduce((accm, [key, o]) => {
                 accm[key] = o.template;
                 return accm;
-            }, {})
+            }, {});
+    }
+    writeLang(sourcemap) {
+        let langResource = this.getLanguageFromSourcemap(sourcemap)
         // 多语资源文件
         fileHelper.writeLang(langResource)
     }
@@ -254,11 +278,11 @@ class Traverser {
         // 映射文件
         fileHelper.writeSourceMap(toWriteSouceMap)
     }
-    get changedKeys(){
+    get changedKeys() {
         return {
-            count:this.changedCount,
-            newKeys:this.newKeys,
-            removedKeys:this.removedKeys,
+            count: this.changedCount,
+            newKeys: this.newKeys,
+            removedKeys: this.removedKeys,
         };
     }
     get keyLen() {

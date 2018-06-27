@@ -35,6 +35,7 @@
             "program": "${workspaceFolder}/bin/cli.js",
             "args": [
                 "sync",
+                "--jsonpath=./resource/ZH-CN.json",
                 "./cases/"
             ]
         }

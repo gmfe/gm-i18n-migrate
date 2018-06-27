@@ -1,7 +1,7 @@
 const glob = require('glob');
 const fs = require('fs-extra');
 const p = require('path');
-const ExpressionTraverse = require('./core/Traverser')
+const Traverser = require('./core/Traverser')
 const util = require('./util');
 let config = require('./config')
 const { exclude } = config;
@@ -33,7 +33,7 @@ function scan(paths, options) {
     let filePaths = resolvePaths(paths);
 
     util.log(`正在替换和提取多语...文件数：${filePaths.length}`)
-    let traverser = new ExpressionTraverse();
+    let traverser = new Traverser();
     traverser.traverseFiles(filePaths);
 
     let end = Date.now();
@@ -42,11 +42,11 @@ function scan(paths, options) {
 }
 function sync(paths, options) {
     let start = Date.now();
-    Object.assign(config, options);
+    // Object.assign(config, options);
     let filePaths = resolvePaths(paths);
     util.log(`正在同步...文件数：${filePaths.length}`)
-    let traverser = new ExpressionTraverse();
-    traverser.syncResource(filePaths);
+    let traverser = new Traverser();
+    traverser.syncResource(filePaths,options);
 
     let end = Date.now();
     let time = ((end - start) / 1000).toFixed(2);
@@ -60,7 +60,7 @@ function merge(paths, options) {
         let json = fs.readJSONSync(path);
         Object.assign(result, json);
     }
-    let outPath = options.out || p.join(process.cwd(), 'merged.json');
+    let outPath = options.out || paths[0]
     fs.writeJSONSync(outPath, result);
     util.log(`合并完毕，输出文件路径 ${outPath}`);
 }

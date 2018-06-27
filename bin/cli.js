@@ -20,6 +20,8 @@ program
 
 program
     .command('sync [paths...]')
+    .option('--clean', '同时清除语言包JSON文件中多余的key')
+    .option('--jsonpath <path>', '指定语言包JSON文件的位置并覆盖')
     .description('将资源文件与指定路径文件中的i18n信息同步')
     .action((paths, cmd) => {
         sync(paths, cleanArgs(cmd))
@@ -28,7 +30,7 @@ program
 program
     .command('merge [paths...]')
     .option('--out <filename>', '指定输出文件名')
-    .description('合并所有资源文件，合并后输出到新文件')
+    .description('合并所有资源文件，合并后默认输出到第一个文件')
     .action((paths, cmd) => {
         merge(paths, cleanArgs(cmd))
     })
