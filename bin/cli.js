@@ -4,7 +4,7 @@ let program = require('commander');
 const {
     scan,
     sync,merge,diff
-} = require('../src')
+} = require('../lib')
 program
     .command('scan [paths...]')
     .option('--rewrite', '覆盖已有文件')

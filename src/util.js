@@ -9,7 +9,7 @@ exports.isChinese = (text) => {
 }
 
 exports.parentPathHasTransformed = (path) => {
-    return this.hasTransformedPath(path.parentPath)
+    return exports.hasTransformedPath(path.parentPath)
 }
 exports.hasTransformedPath = (path) => {
     if (t.isCallExpression(path.node) &&
@@ -36,23 +36,23 @@ exports.parseStr = (str) => {
 }
 exports.getKeyInfo = (path, template) => {
     return {
-            ...this.getMetaFromPath(path),
+            ...exports.getMetaFromPath(path),
             template,
         
     };
 }
 exports.getMetaFromPath = (path) => {
-    path = this.safePath(path)
+    path = exports.safePath(path)
     let info = {
         filename: fileHelper.formatFilePath(path.hub.file.log.filename),
-        source: this.getSource(path),
-        location: this.getLocation(path)
+        source: exports.getSource(path),
+        location: exports.getLocation(path)
     };
 
     return info
 }
 exports.getLocation = (path) => {
-    path = this.safePath(path)
+    path = exports.safePath(path)
     let loc = path.node.loc;
     if (loc) {
         let {
@@ -64,12 +64,12 @@ exports.getLocation = (path) => {
     return '';
 }
 exports.getErrorMsg = (msg, path) => {
-    path = this.safePath(path)
+    path = exports.safePath(path)
     const {
         node
     } = path;
     const rawCode = path.hub.file.code;
-    let extraInfo = `${JSON.stringify(this.getMetaFromPath(path))}`;
+    let extraInfo = `${JSON.stringify(exports.getMetaFromPath(path))}`;
     if (node.loc) {
         let {
             line,
@@ -86,9 +86,9 @@ exports.makeComment = (comment) => {
     return comment ? `/* ${comment} */` : ''
 }
 exports.getSource = (p, trim = true) => {
-    let code = this.safePath(p).getSource()
+    let code = exports.safePath(p).getSource()
     return trim ? code.trim() : code;
-    // return this.getSourceFromLoc(this.safePath(p))
+    // return exports.getSourceFromLoc(exports.safePath(p))
 }
 
 exports.safePath = (path) => {
@@ -99,27 +99,27 @@ exports.safePath = (path) => {
 }
 exports.error = (msg, path) => {
     if (config.debug) {
-        throw new Error(this.getErrorMsg(msg, path));
+        throw new Error(exports.getErrorMsg(msg, path));
     }
-    this.warn(msg, path);
+    exports.warn(msg, path);
 }
 exports.throwError = (msg, path) => {
-    throw new Error(this.getErrorMsg(msg, path));
+    throw new Error(exports.getErrorMsg(msg, path));
 }
 exports.log = (msg) => {
     return console.log.call(console, msg);
 }
 exports.debug = (msg, path) => {
     if (config.debug) {
-        return console.log.call(console, `debug:${msg}\n${JSON.stringify(this.getMetaFromPath(path))}`);
+        return console.log.call(console, `debug:${msg}\n${JSON.stringify(exports.getMetaFromPath(path))}`);
     }
 }
 exports.warn = (msg, path) => {
-    return console.warn.call(console, this.getErrorMsg(msg, path));
+    return console.warn.call(console, exports.getErrorMsg(msg, path));
 }
 exports.assert = (condition, msg, path) => {
     if (!condition) {
-        this.throwError(msg, path);
+        exports.throwError(msg, path);
     }
 }
 exports.escapeRegExp = (str) => {

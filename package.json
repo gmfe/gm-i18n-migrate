@@ -1,5 +1,5 @@
 {
-  "name": "i18n-migration",
+  "name": "gm-i18n-migrate",
   "version": "0.0.1",
   "description": "a tool for migrate to i18n",
   "main": "lib/index.js",
@@ -17,17 +17,17 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Realwate/i18n-migration.git"
+    "url": "git+https://github.com/gmfe/gm-i18n-migrate.git"
   },
   "keywords": [
     "i18n"
   ],
-  "author": "Realwate",
+  "author": "gmfe",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/Realwate/i18n-migration/issues"
+    "url": "https://github.com/gmfe/gm-i18n-migrate/issues"
   },
-  "homepage": "https://github.com/Realwate/i18n-migration#readme",
+  "homepage": "https://github.com/gmfe/gm-i18n-migrate#readme",
   "dependencies": {
     "commander": "^2.13.0",
     "babel-code-frame": "^6.26.0",

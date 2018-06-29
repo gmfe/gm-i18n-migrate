@@ -9,9 +9,9 @@
 
 ## init
 ``` bash
-git clone https://github.com/Realwate/i18n-migrate-tool
+git clone https://github.com/gmfe/gm-i18n-migrate
 
-cd i18n-migrate-tool
+cd gm-i18n-migrate
 
 npm install
 
@@ -47,7 +47,7 @@ i18n-m merge [paths]
 `i18n-m scan`主要用于项目的第一次迁移，`i18n-m sync`用于将后续开发时新增的`i18n.t`词条同步到多语文件中(**如果是插值情况需要自己去写模板**)，`i18n-m diff`和`i18n-m merge`用于 **多语文件** 之间(中英文)的操作。
 
 ## config
-在项目根路径新建`i18n.config.js`,具体配置项可[查看](https://github.com/Realwate/i18n-migrate-tool/blob/master/src/config/index.js)。其中`exclude`遵循`glob`语法，例如`demo/**`。
+在项目根路径新建`i18n.config.js`,具体配置项可[查看](https://github.com/gmfe/gm-i18n-migrate/blob/master/src/config/index.js)。其中`exclude`遵循`glob`语法，例如`demo/**`。
 
 ## 一些问题
 ### 模板字符串
