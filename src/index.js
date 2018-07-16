@@ -53,8 +53,8 @@ function sync(paths, options) {
     let { count, removedKeys, newKeys } = traverser.changedKeys;
     util.log(`执行完毕！修改词条数${count};时长：${time}s.\n新增: ${JSON.stringify(newKeys)}\n删除: ${JSON.stringify(removedKeys)}`)
 }
-// 第一个文件之后的资源文件与第一个做合并
-function merge(paths, options) {
+// 将多语文件合并到第一个文件
+function assign(paths, options) {
     let result = {};
     for (let path of paths) {
         let json = fs.readJSONSync(path);
@@ -63,6 +63,37 @@ function merge(paths, options) {
     let outPath = options.out || paths[0]
     fs.writeJSONSync(outPath, result);
     util.log(`合并完毕，输出文件路径 ${outPath}`);
+}
+// 将多语文件合并到第一个文件，不会新增key
+function merge(paths, options) {
+    let result = fs.readJSONSync(path);
+    paths.splice(0,1);
+    for (let path of paths) {
+        let json = fs.readJSONSync(path);
+        Object.keys(json).forEach((key)=>{
+            if(result[key]){
+                result[key] = json[key];
+            }
+        })
+    }
+    let outPath = options.out || paths[0]
+    fs.writeJSONSync(outPath, result);
+    util.log(`合并完毕，输出文件路径 ${outPath}`);
+}
+function pick(paths,options){
+    let result = {};
+    for (let path of paths) {
+        let json = fs.readJSONSync(path);
+        Object.entries(json)
+        .forEach(([key,val]) => {
+            if(!util.isChinese(val)) {
+                result[key] = val;
+            }
+        });
+    }
+    let outPath = options.out || paths[0]
+    fs.writeJSONSync(outPath, result);
+    util.log(`pick完毕，输出文件路径 ${outPath}`);
 }
 
 // 比较两个资源文件，将差异输出到文件
@@ -90,7 +121,7 @@ function diff(paths, options) {
     fs.writeJSONSync(outPath, result);
     util.log(`比较完毕，输出文件路径 ${outPath}`);
 }
-
+const excel = require('./excel')
 module.exports = {
-    scan, sync, merge, diff
+    assign, scan, sync, merge, diff,pick, ...excel
 };

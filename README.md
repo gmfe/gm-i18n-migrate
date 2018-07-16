@@ -41,7 +41,7 @@ i18n-m sync [paths] --jsonpath=./locales/cn/default.json
 i18n-m diff [paths] 
 
 # 合并所有多语资源文件，合并后覆盖第一个路径的文件
-i18n-m merge [paths] 
+i18n-m assign [paths] 
 
 ```
 `i18n-m scan`主要用于项目的第一次迁移，`i18n-m sync`用于将后续开发时新增的`i18n.t`词条同步到多语文件中(**如果是插值情况需要自己去写模板**)，`i18n-m diff`和`i18n-m merge`用于 **多语文件** 之间(中英文)的操作。
@@ -97,3 +97,5 @@ let str = `批量上传${name === 'sku' ? '商品' : targetType.name}`
 // {i18next.t('KEY12',{VAR1:name,VAR2:where})}  //KEY12: 你好，${VAR1}。欢迎来到${VAR2}  
 ```
 解决：先让代码回退到替换之前，然后用 `scan --fixjsx` 选项重新扫描一遍来修复。
+**UPDATE:**
+这种情况也有完美的解决方案，具体阐述可以看[这篇文章](https://github.com/gmfe/Think/issues/46)

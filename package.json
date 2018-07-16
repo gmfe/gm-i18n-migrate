@@ -29,13 +29,14 @@
   },
   "homepage": "https://github.com/gmfe/gm-i18n-migrate#readme",
   "dependencies": {
-    "commander": "^2.13.0",
     "babel-code-frame": "^6.26.0",
     "babel-core": "^6.26.3",
     "babel-types": "^6.26.0",
+    "commander": "^2.13.0",
     "fs-extra": "^6.0.1",
     "glob": "^7.1.2",
-    "recast": "^0.15.0"
+    "recast": "^0.15.0",
+    "xlsx": "^0.13.2"
   },
   "devDependencies": {
     "babel-cli": "^6.2.0",
