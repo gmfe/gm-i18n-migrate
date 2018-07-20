@@ -59,7 +59,6 @@ program
 
 program
     .command('xlsx2json <path>')
-    .option('--out <jsonPath>', '指定输出json位置')
     .description('将xlsx多语文件转化为json')
     .action((paths, cmd) => {
         xlsx2json(paths, cleanArgs(cmd))

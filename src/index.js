@@ -66,17 +66,17 @@ function assign(paths, options) {
 }
 // 将多语文件合并到第一个文件，不会新增key
 function merge(paths, options) {
-    let result = fs.readJSONSync(path);
-    paths.splice(0,1);
+    let firstPath = paths.shift();
+    let result = fs.readJSONSync(firstPath);
     for (let path of paths) {
         let json = fs.readJSONSync(path);
-        Object.keys(json).forEach((key)=>{
-            if(result[key]){
+        Object.keys(json).forEach((key) => {
+            if (result[key]) {
                 result[key] = json[key];
             }
         })
     }
-    let outPath = options.out || paths[0]
+    let outPath = options.out || firstPath
     fs.writeJSONSync(outPath, result);
     util.log(`合并完毕，输出文件路径 ${outPath}`);
 }
@@ -86,12 +86,12 @@ function pick(paths,options){
         let json = fs.readJSONSync(path);
         Object.entries(json)
         .forEach(([key,val]) => {
-            if(!util.isChinese(val)) {
+            if(!util.hasChinese(val)) {
                 result[key] = val;
             }
         });
     }
-    let outPath = options.out || paths[0]
+    let outPath = options.out || 'pick.json'
     fs.writeJSONSync(outPath, result);
     util.log(`pick完毕，输出文件路径 ${outPath}`);
 }

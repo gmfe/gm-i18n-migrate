@@ -211,7 +211,7 @@ class Traverser {
         let hasChildElement = childrenPaths.some((child) => t.isJSXElement(child));
         if (!hasChildElement) {
             // 中文 + variable 的情况
-            let hasChinese = childrenPaths.some((child) => t.isJSXText(child) && util.isChinese(child.node.value));
+            let hasChinese = childrenPaths.some((child) => t.isJSXText(child) && util.hasChinese(child.node.value));
             let hasVariable = childrenPaths.some((child) => t.isJSXExpressionContainer(child));
 
             if (hasChinese && hasVariable) {
@@ -232,7 +232,7 @@ class Traverser {
         util.debug(`开始遍历rootPath：`, rootPath)
         // 仅由StringLiteral/JSXText 且不是中文 构成的expression
         if ((t.isStringLiteral(rootPath) || t.isJSXText(rootPath)) &&
-            !util.isChinese(rootPath.node.value)) {
+            !util.hasChinese(rootPath.node.value)) {
             return;
         }
         if (util.parentPathHasTransformed(rootPath)) {

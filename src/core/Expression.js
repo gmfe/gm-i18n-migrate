@@ -142,7 +142,7 @@ class Expression {
                         param.push(`${variableName}:${util.getSource(expr)}`);
                     }
                 }
-                if (!util.isChinese(template)) {
+                if (!util.hasChinese(template)) {
                     return {};
                 }
                 //  param格式为`${variableName}:${node.name},`
@@ -209,7 +209,7 @@ class Expression {
             return null;
         }
         // template没有中文
-        if (!util.isChinese(template)) {
+        if (!util.hasChinese(template)) {
             return null;
         }
         // 替换ast
