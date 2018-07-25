@@ -8,8 +8,8 @@ function initVisitor(traverser) {
                 return;
             }
             let keyPath = path.get('arguments')[0];
-            if(keyPath.node.value==undefined){
-                util.warn('i18n函数key只能为StringLiteral',keyPath);
+            if (keyPath.node.value == undefined) {
+                util.warn('i18n函数key只能为StringLiteral', keyPath);
                 return;
             }
             traverser.addKey(keyPath, keyPath.node.value);

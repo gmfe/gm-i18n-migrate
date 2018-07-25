@@ -31,7 +31,7 @@ i18n-m scan [paths] --rewrite
 # 处理指定路径... --fixjsx尝试将类似如下JSXText hello {name} 作为整体处理
 i18n-m scan [paths] --rewrite --fixjsx
 
-# 扫描指定路径文件中的i18n信息 与资源文件同步(添加新增的key) 
+# 扫描指定路径文件中的i18n信息 与多语文件同步(添加新增的key，默认同步两个文件 ./locales/en(zh)/default.json) 
 i18n-m sync [paths] 
 
 # 扫描指定路径文件中的i18n信息 与jsonpath中的语言文件同步并覆盖
@@ -42,6 +42,9 @@ i18n-m diff [paths]
 
 # 合并所有多语资源文件，合并后覆盖第一个路径的文件
 i18n-m assign [paths] 
+
+# 提取指定多语文件中的中文或英文词条(默认type为中文，path为./locales/en/default.json)
+i18n-m pick [paths] --type=en
 
 ```
 `i18n-m scan`主要用于项目的第一次迁移，`i18n-m sync`用于将后续开发时新增的`i18n.t`词条同步到多语文件中(**如果是插值情况需要自己去写模板**)，`i18n-m diff`和`i18n-m merge`用于 **多语文件** 之间(中英文)的操作。

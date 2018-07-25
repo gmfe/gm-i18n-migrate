@@ -3,7 +3,6 @@ const fileHelper = require('./core/fileHelper')
 const recast = require('recast')
 const codeFrameColumns = require('babel-code-frame');
 const t = require('babel-types')
-
 exports.hasChinese = (text) => {
     return /[\u4e00-\u9fa5]/.test(text);
 }

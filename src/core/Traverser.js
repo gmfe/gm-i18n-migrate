@@ -83,11 +83,12 @@ class Traverser {
         }
     }
 
-    syncJSON(oldJSON,newJSON,options){
-         // 不能直接覆盖 因为 插值情况newJSON拿不到模板
+    syncJSON(oldJSON, newJSON, options) {
+        // 不能直接覆盖 因为 插值情况newJSON拿不到模板
         if (options.clean) {
             Object.keys(oldJSON).forEach((key) => {
                 if (!newJSON.hasOwnProperty(key)) {
+                    util.log(`删除: ${key}`)
                     this.changedCount++;
                     this.removedKeys.push(key);
                     delete oldJSON[key];
@@ -98,11 +99,28 @@ class Traverser {
         // 添加新的 需要手动去写模板
         Object.keys(newJSON).forEach((key) => {
             if (!oldJSON.hasOwnProperty(key)) {
+                util.log(`新增: ${key}`)
                 this.changedCount++;
                 this.newKeys.push(key);
                 oldJSON[key] = newJSON[key];
             }
         })
+    }
+    syncJSONWithPath(options) {
+        if (!Array.isArray(options.jsonpath)) {
+            options.jsonpath = [options.jsonpath];
+        }
+        let paths = options.jsonpath;
+        let newJSON = this.getLanguageFromSourcemap(this.extraKeys);
+        for (let path of paths) {
+            // 后续与语言包同步
+            util.log(`\n开始同步 ${path}`)
+            let oldJSON = fs.readJSONSync(path);
+            this.syncJSON(oldJSON, newJSON, options);
+
+            fs.outputJSONSync(path, oldJSON);
+            
+        }
     }
     syncResource(files, options) {
         const {
@@ -113,28 +131,25 @@ class Traverser {
             transformFile(filePath)
         });
         if (options.jsonpath) {
-            // 后续与语言包同步
-            let oldJSON = fs.readJSONSync(options.jsonpath)
-            let newJSON = this.getLanguageFromSourcemap(this.extraKeys);
-            this.syncJSON(oldJSON,newJSON,options)
-          
-            if (this.changedCount > 0) {
-                fs.outputJSONSync(options.jsonpath, oldJSON);
-            }
+            this.syncJSONWithPath(options)
 
         } else {
-            // 第一次迁移时同步sourcemap与语言包
-            let sourcemap = fileHelper.getSourceMapContent();
-            if (!sourcemap) {
-                return;
-            }
+            // 默认同步 ./locales/zh/default.json ./locales/en/default.json 
+            options.jsonpath = ['./locales/zh/default.json', './locales/en/default.json']
+            this.syncJSONWithPath(options)
 
-            let sourceData = sourcemap.data;
-            this.syncJSON(sourceData,this.extraKeys,options)
-            if (this.changedCount > 0) {
-                this.writeLang(sourceData);
-                fileHelper.writeSourceMap(sourcemap);
-            }
+            // 第一次迁移时同步sourcemap与语言包
+            // let sourcemap = fileHelper.getSourceMapContent();
+            // if (!sourcemap) {
+            //     return;
+            // }
+
+            // let sourceData = sourcemap.data;
+            // this.syncJSON(sourceData,this.extraKeys,options)
+            // if (this.changedCount > 0) {
+            //     this.writeLang(sourceData);
+            //     fileHelper.writeSourceMap(sourcemap);
+            // }
         }
 
     }
