@@ -44,7 +44,7 @@ exports.sync = (paths, options) => {
     let start = Date.now();
     // Object.assign(config, options);
     let filePaths = resolvePaths(paths);
-    util.log(`开始扫描...文件数：${filePaths.length}`)
+    util.log(`开始扫描...文件数：${filePaths.length}\n`)
     let traverser = new Traverser();
     traverser.syncResource(filePaths, options);
 
@@ -71,7 +71,7 @@ exports.merge = (paths, options) => {
     for (let path of paths) {
         let json = fs.readJSONSync(path);
         Object.keys(json).forEach((key) => {
-            if (result[key]) {
+            if (result[key] && json[key] != null) {
                 result[key] = json[key];
             }
         })

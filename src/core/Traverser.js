@@ -67,8 +67,9 @@ class Traverser {
         this.sourcemapData = {};
         this.extraKeys = {};
         this.changedCount = 0;
-        this.removedKeys = [];
         this.newKeys = [];
+        this.modifiedKeys = [];
+        this.removedKeys = [];
         this.setup();
     }
     setup() {
@@ -83,44 +84,65 @@ class Traverser {
         }
     }
 
-    syncJSON(oldJSON, newJSON, options) {
+    calcDiff(oldJSON, scanedJSON, options) {
         // 不能直接覆盖 因为 插值情况newJSON拿不到模板
         if (options.clean) {
             Object.keys(oldJSON).forEach((key) => {
-                if (!newJSON.hasOwnProperty(key)) {
-                    util.log(`删除: ${key}`)
-                    this.changedCount++;
-                    this.removedKeys.push(key);
-                    delete oldJSON[key];
+                if (!scanedJSON.hasOwnProperty(key)) {
+                    util.log(`「删除」 ${key}`)
+                    this.removedKeys.push(key)
                 }
             })
         }
-
-        // 添加新的 需要手动去写模板
-        Object.keys(newJSON).forEach((key) => {
+       
+        Object.keys(scanedJSON).forEach((key) => {
             if (!oldJSON.hasOwnProperty(key)) {
-                util.log(`新增: ${key}`)
-                this.changedCount++;
-                this.newKeys.push(key);
-                oldJSON[key] = newJSON[key];
+                 // 添加新的
+                if (!scanedJSON[key]) {
+                    scanedJSON[key] = key; // 默认设置为key
+                }
+                // 新增的key
+                util.log(`「新增」 ${key}:${scanedJSON[key]}`)
+                this.newKeys.push([key, scanedJSON[key]])
+            } else if (oldJSON[key] !== scanedJSON[key] // 修改已有的
+                && scanedJSON[key]) { // 如果有注释设置了tpl
+                util.log(`「修改」 ${key}:${scanedJSON[key]}`)
+                this.modifiedKeys.push([key, scanedJSON[key]]);
             }
         })
+    }
+
+    syncJSON(oldJSON, options) {
+        if (options.clean) {
+            for (let removedKey of this.removedKeys) {
+                delete oldJSON[removedKey];
+            }
+        }
+        for (let [key, val] of this.newKeys.concat(this.modifiedKeys)) {
+            oldJSON[key] = val;
+        }
     }
     syncJSONWithPath(options) {
         if (!Array.isArray(options.jsonpath)) {
             options.jsonpath = [options.jsonpath];
         }
         let paths = options.jsonpath;
-        let newJSON = this.getLanguageFromSourcemap(this.extraKeys);
-        for (let path of paths) {
-            // 后续与语言包同步
-            util.log(`\n开始同步 ${path}`)
-            let oldJSON = fs.readJSONSync(path);
-            this.syncJSON(oldJSON, newJSON, options);
+        // scanedJSON 没有注释则 tpl为''
+        let scanedJSON = this.getLanguageFromSourcemap(this.extraKeys);
 
+        let cnPath = paths[0];
+        let cnJSON = fs.readJSONSync(cnPath);
+        // 计算出与中文多语的差异
+        this.calcDiff(cnJSON, scanedJSON, options);
+        util.log('');
+        for (let path of paths) {
+            // 将差异同步到多语文件
+            util.log(`开始同步到多语文件 ${path}`)
+            let oldJSON = fs.readJSONSync(path);
+            this.syncJSON(oldJSON, options);
             fs.outputJSONSync(path, oldJSON);
-            
         }
+        util.log('');
     }
     syncResource(files, options) {
         const {
@@ -132,7 +154,6 @@ class Traverser {
         });
         if (options.jsonpath) {
             this.syncJSONWithPath(options)
-
         } else {
             // 默认同步 ./locales/zh/default.json ./locales/en/default.json 
             options.jsonpath = ['./locales/zh/default.json', './locales/en/default.json']
@@ -153,9 +174,8 @@ class Traverser {
         }
 
     }
-    addKey(path, key) {
-        // 默认key作template
-        this.extraKeys[key] = util.getKeyInfo(path, key);
+    addKey(path, key, tpl) {
+        this.extraKeys[key] = util.getKeyInfo(path, tpl);
     }
     traverseFiles(files) {
         const {
@@ -295,9 +315,7 @@ class Traverser {
     }
     get changedKeys() {
         return {
-            count: this.changedCount,
-            newKeys: this.newKeys,
-            removedKeys: this.removedKeys,
+            count: this.modifiedKeys.length + this.newKeys.length + this.removedKeys.length,
         };
     }
     get keyLen() {

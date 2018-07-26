@@ -31,10 +31,10 @@ i18n-m scan [paths] --rewrite
 # 处理指定路径... --fixjsx尝试将类似如下JSXText hello {name} 作为整体处理
 i18n-m scan [paths] --rewrite --fixjsx
 
-# 扫描指定路径文件中的i18n信息 与多语文件同步(添加新增的key，默认同步两个文件 ./locales/en(zh)/default.json) 
+# 扫描指定路径文件中的i18n信息 同步到多语文件(默认同步两个文件 ./locales/zh(en)/default.json) 
 i18n-m sync [paths] 
 
-# 扫描指定路径文件中的i18n信息 与jsonpath中的语言文件同步并覆盖
+# 扫描指定路径文件中的i18n信息 同步到jsonpath指向的多语文件
 i18n-m sync [paths] --jsonpath=./locales/cn/default.json
 
 # 比较两个多语资源文件，将差异输出到新文件
@@ -43,7 +43,7 @@ i18n-m diff [paths]
 # 合并所有多语资源文件，合并后覆盖第一个路径的文件
 i18n-m assign [paths] 
 
-# 提取指定多语文件中的中文或英文词条(默认type为中文，path为./locales/en/default.json)
+# 提取指定多语文件中的中文或英文词条(默认提取中文，path为./locales/en/default.json)
 i18n-m pick [paths] --type=en
 
 ```
