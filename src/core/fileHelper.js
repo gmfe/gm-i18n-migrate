@@ -43,17 +43,13 @@ class FileHelper {
     }
     writeResource(filename, json) {
         let resourcePath = this.getResourceFilePath(filename);
-        fs.outputJSONSync(resourcePath, json, {
-            encoding: 'utf-8'
-        });
+        fs.outputJSONSync(resourcePath, json);
     }
     write(filePath, content) {
         if (!config.rewrite) {
             filePath = this.getTransformFilePath(filePath)
         }
-        fs.outputFileSync(filePath, content, {
-            encoding: 'utf-8'
-        });
+        fs.outputFileSync(filePath, content);
     }
 }
 

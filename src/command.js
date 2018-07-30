@@ -6,6 +6,16 @@ const util = require('./util');
 let config = require('./config')
 const { exclude } = config;
 
+let base = fs.outputJSONSync.bind(fs);
+fs.outputJSONSync = function(file, obj, options) {
+    options = {
+        encoding: 'utf-8',
+        spaces: 4,
+        ...options
+    }
+    base(file, obj, options);
+}
+
 function resolvePaths(paths) {
     let filePaths = [];
     for (let path of paths) {
@@ -61,7 +71,7 @@ exports.assign = (paths, options) => {
         Object.assign(result, json);
     }
     let outPath = options.out || paths[0]
-    fs.writeJSONSync(outPath, result);
+    fs.outputJSONSync(outPath, result);
     util.log(`合并完毕，输出文件路径 ${outPath}`);
 }
 // 将多语文件合并到第一个文件，不会新增key
@@ -71,13 +81,13 @@ exports.merge = (paths, options) => {
     for (let path of paths) {
         let json = fs.readJSONSync(path);
         Object.keys(json).forEach((key) => {
-            if (result[key] && json[key] != null) {
+            if (result.hasOwnProperty(key) && json[key] != null) {
                 result[key] = json[key];
             }
         })
     }
     let outPath = options.out || firstPath
-    fs.writeJSONSync(outPath, result);
+    fs.outputJSONSync(outPath, result);
     util.log(`合并完毕，输出文件路径 ${outPath}`);
 }
 // 提取多语文件中的英文or中文
@@ -109,7 +119,7 @@ exports.pick = (paths, options) => {
             });
     }
     let outPath = options.out || 'pick.json'
-    fs.writeJSONSync(outPath, result);
+    fs.outputJSONSync(outPath, result);
     util.log(`pick完毕，输出文件路径 ${outPath}`);
 }
 
@@ -135,6 +145,6 @@ exports.diff = (paths, options) => {
     let result = Object.assign(compare(keys1, map2, json1), compare(keys2, map1, json2))
 
     let outPath = options.out || p.join(process.cwd(), 'diff.json');
-    fs.writeJSONSync(outPath, result);
+    fs.outputJSONSync(outPath, result);
     util.log(`比较完毕，输出文件路径 ${outPath}`);
 }

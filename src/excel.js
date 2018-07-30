@@ -36,7 +36,7 @@ function xlsx2json(xlsxPath, options) {
         let xlsxJSON = XLSX.utils.sheet_to_json(wb.Sheets[sheetName]);
         let json = xlsxJSONAdapter(xlsxJSON)
         let output = `${p.resolve(process.cwd(),sheetName)}.json`;
-        fs.writeJSONSync(output, json);
+        fs.outputJSONSync(output, json);
         util.log(`输出json文件 ${output}`)
     }
     
