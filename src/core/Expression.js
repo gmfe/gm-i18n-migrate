@@ -234,11 +234,11 @@ class Expression {
             template,
             sourceStr: util.getSource(path)
         }));
-        let replaceStr = `${config.callStatement}('${key}')${comment}`;
+        let replaceStr = `${config.callStatement}(${comment}'${key}')`;
         if (param) {
             // eslint没有,
             param = param.replace(/,$/,'');
-            replaceStr = `${config.callStatement}('${key}',{${param}})${comment}`;
+            replaceStr = `${config.callStatement}(${comment}'${key}',{${param}})`;
         }
         return replaceStr;
     }

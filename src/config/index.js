@@ -7,7 +7,7 @@ let defaultConfig = {
     outputDir: 'out',
     exclude: [],
     callStatement: 'i18next.t',
-    importStatementStr: "import {i18next} from 'gm-i18n';\n",
+    importStatementStr: "import {i18next} from 'gm-i18n'\n",
     debug: false,
     // key分隔符
     keySeparator: '#',

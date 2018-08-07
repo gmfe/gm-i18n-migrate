@@ -43,7 +43,7 @@ exports.scan = (paths, options) => {
     let filePaths = resolvePaths(paths);
 
     util.log(`正在替换和提取多语...文件数：${filePaths.length}`)
-    let traverser = new Traverser();
+    let traverser = new Traverser(options);
     traverser.traverseFiles(filePaths);
 
     let end = Date.now();
@@ -142,7 +142,14 @@ exports.diff = (paths, options) => {
     let map1 = util.makeMap(keys1);
     let map2 = util.makeMap(keys2);
 
-    let result = Object.assign(compare(keys1, map2, json1), compare(keys2, map1, json2))
+    let result;
+    if(options.left){
+        result = compare(keys1, map2, json1);
+    }else if (options.right){
+        result =compare(keys2, map1, json2);
+    }else{
+        result = Object.assign(compare(keys1, map2, json1), compare(keys2, map1, json2));
+    }
 
     let outPath = options.out || p.join(process.cwd(), 'diff.json');
     fs.outputJSONSync(outPath, result);

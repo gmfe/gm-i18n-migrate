@@ -9,6 +9,7 @@ program
     .command('scan [paths...]')
     .option('--rewrite', '覆盖已有文件')
     .option('--fixjsx', '尝试整体解析JSXText')
+    .option('--basejson <path>', '基于JSON中存在的插值KEY，尝试还原')
     // .option('--rule <ruleName>', 'inspect a specific module rule')
     // .option('--plugin <pluginName>', 'inspect a specific plugin')
     // .option('--rules', 'list all module rule names')
@@ -34,7 +35,7 @@ program
     .action((paths, cmd) => {
         merge(paths, cleanArgs(cmd))
     })
-    program
+program
     .command('assign [paths...]')
     .option('--out <filename>', '指定输出文件名')
     .description('合并所有多语文件，合并后默认输出到第一个文件')
@@ -44,6 +45,8 @@ program
 
 program
     .command('diff [paths...]')
+    .option('--left', '输出相对左边的diff')
+    .option('--right', '输出相对右边的diff')
     .option('--out <filename>', '指定输出文件名')
     .description('比较两个多语文件，将差异输出到新文件')
     .action((paths, cmd) => {

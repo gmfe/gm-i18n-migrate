@@ -4,7 +4,7 @@ const fileHelper = require('./fileHelper');
 const fs = require('fs-extra');
 const t = require('babel-types')
 const initTransformer = require('../plugin/transformer')
-const transformPlugin = require('../plugin/transformPlugin')
+const scanPlugin = require('../plugin/scanPlugin')
 const syncPlugin = require('../plugin/syncPlugin')
 const {
     KeyStrategy,
@@ -63,13 +63,14 @@ function isRootParentPath(path) {
 }
 
 class Traverser {
-    constructor() {
+    constructor(options = {}) {
         this.sourcemapData = {};
         this.extraKeys = {};
         this.changedCount = 0;
         this.newKeys = [];
         this.modifiedKeys = [];
         this.removedKeys = [];
+        this.options = options;
         this.setup();
     }
     setup() {
@@ -78,8 +79,29 @@ class Traverser {
         if (sourcemap) {
             initial = sourcemap.meta.nextKeyNum;
         }
+        let keyStrategy = new KeyStrategy(initial);
+        if (this.options.basejson) {
+            // 修复插值情况KEY值不一致问题
+            // 从旧的多语文件中提取出该模板对应的KEY
+            let baseJSON = fs.readJSONSync(this.options.basejson);
+            let keys = Object.keys(baseJSON)
+                .filter((key) => key.startsWith('KEY'));
+            let values = keys.map((key) => baseJSON[key]);
+
+            let baseKey = keyStrategy;
+            keyStrategy = {
+                get({ template }) {
+                    let i = values.indexOf(template)
+                    if (i === -1) {
+                        return baseKey.get({ template });
+                    }
+                    util.log(`模板「${template}」复用KEY「${keys[i]}」`);
+                    return keys[i];
+                }
+            }
+        }
         this.ctx = {
-            keyStrategy: new KeyStrategy(initial),
+            keyStrategy,
             commentStrategy: new CommentStrategy(),
         }
     }
@@ -94,10 +116,10 @@ class Traverser {
                 }
             })
         }
-       
+
         Object.keys(scanedJSON).forEach((key) => {
             if (!oldJSON.hasOwnProperty(key)) {
-                 // 添加新的
+                // 添加新的
                 if (!scanedJSON[key]) {
                     scanedJSON[key] = key; // 默认设置为key
                 }
@@ -175,12 +197,17 @@ class Traverser {
 
     }
     addKey(path, key, tpl) {
-        this.extraKeys[key] = util.getKeyInfo(path, tpl);
+        let val = util.getKeyInfo(path, tpl);
+        let oldVal = this.extraKeys[key];
+        if (oldVal && oldVal.template !== val.template) {
+            throw new Error(`KEY「${key}」对应的模板有多个\n${oldVal.template}\n${val.template}\n请检查！`)
+        }
+        this.extraKeys[key] = val;
     }
     traverseFiles(files) {
         const {
             transformFile
-        } = initTransformer([transformPlugin(this)]);
+        } = initTransformer([scanPlugin(this)]);
 
         files.forEach((filePath) => {
             // 替换\t
