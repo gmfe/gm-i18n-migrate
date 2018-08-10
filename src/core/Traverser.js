@@ -1,5 +1,4 @@
 let util = require('../util')
-let config = require('../config')
 const fileHelper = require('./fileHelper');
 const fs = require('fs-extra');
 const t = require('babel-types')
@@ -121,7 +120,13 @@ class Traverser {
             if (!oldJSON.hasOwnProperty(key)) {
                 // 添加新的
                 if (!scanedJSON[key]) {
-                    scanedJSON[key] = key; // 默认设置为key
+                    let tpl = key;// 默认设置为key
+                    const sep = this.options.nsSeparator
+                    if (key.includes(sep)) {
+                        // __视为ns分割符 取最后一个
+                        tpl = key.split(sep).slice(-1)[0];
+                    }
+                    scanedJSON[key] = tpl;
                 }
                 // 新增的key
                 util.log(`「新增」 ${key}:${scanedJSON[key]}`)
@@ -255,7 +260,14 @@ class Traverser {
             return;
         }
         // root 代表 expression的起点
-        let rootPath = this.findRoot(path);
+        let rootPath;
+        if (t.isStringLiteral(path)
+            && this.options.shouldSingleReplace(path.node.value)) {
+            rootPath = path
+        } else {
+            rootPath = this.findRoot(path);
+        }
+
         if (rootPath == null) {
             util.warn('找不到root的场景', path)
             return;
@@ -263,7 +275,7 @@ class Traverser {
         this.traverseRootPath(rootPath);
     }
     traverseJSXText(textPath) {
-        if (!config.fixjsx) {
+        if (!this.options.fixjsx) {
             // 默认独立解析
             return this.traverseRootPath(textPath);
         }
@@ -303,8 +315,8 @@ class Traverser {
             util.debug(`重复遍历的rootPath：`, rootPath)
             return;
         }
-        // 是moment
-        if (util.isMomentFormat(rootPath)) {
+        // 
+        if (util.shouldExcludeRoot(rootPath)) {
             return;
         }
 

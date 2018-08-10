@@ -19,13 +19,12 @@ function disableSkip(disableDirectives) {
                     column: directive.column,
                 }
             };
+            disableBlocks.push(curDisableBlock);
         } else if (directive.type === 'enable') {
             curDisableBlock.end = {
                 line: directive.line,
                 column: directive.column,
             }
-            disableBlocks.push(curDisableBlock);
-            curDisableBlock = null;
         } else if (directive.type === 'disable-next-line') {
             disableLines[directive.line + 1] = true
         } else if (directive.type === 'disable-line') {
@@ -45,7 +44,12 @@ function disableSkip(disableDirectives) {
             return true;
         }
         return disableBlocks.some((block) => {
-            return loc.start.line > block.start.line && loc.end.line < block.end.line
+            let startDisabled = loc.start.line > block.start.line;
+            if(block.end){
+                return  startDisabled && loc.end.line < block.end.line
+            }
+            return startDisabled;
+            
         })
     }
 }
@@ -77,13 +81,14 @@ function initVisitor(traverser) {
             exit(path) { // 添加 import
                 const imported = path.get("body")
                     .filter(p => p.isImportDeclaration())
-                    .reduce((map, p) => {
-                        map[p.getSource().trim()] = true;
-                        return map;
-                    }, {})
+                    .map((p) => p.getSource().trim())
                 let importDeclaration = util.parseStr(config.importStatementStr);
-                // 已经引入了
-                if (imported[config.importStatementStr.trim()]) {
+                let source = importDeclaration.source.value;
+                // 简单判断
+                let hasImport = imported.some((importStr)=>{
+                    return importStr.includes(source)
+                })
+                if (hasImport) {
                     return;
                 }
 

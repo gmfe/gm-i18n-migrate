@@ -38,7 +38,7 @@ function resolvePaths(paths) {
 
 exports.scan = (paths, options) => {
     let start = Date.now();
-    Object.assign(config, options);
+    options = Object.assign(config, options);
     util.log(`开始扫描文件...`);
     let filePaths = resolvePaths(paths);
 
@@ -52,10 +52,10 @@ exports.scan = (paths, options) => {
 }
 exports.sync = (paths, options) => {
     let start = Date.now();
-    // Object.assign(config, options);
+    options = Object.assign(config, options);
     let filePaths = resolvePaths(paths);
     util.log(`开始扫描...文件数：${filePaths.length}\n`)
-    let traverser = new Traverser();
+    let traverser = new Traverser(options);
     traverser.syncResource(filePaths, options);
 
     let end = Date.now();

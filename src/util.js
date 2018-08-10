@@ -22,12 +22,29 @@ exports.hasTransformedPath = (path) => {
     return false;
 }
 
-exports.isMomentFormat = (rootPath) => {
-    let parentNode = rootPath.parent;
+exports.isMomentFormat = (parentNode) => {
     return t.isCallExpression(parentNode) &&
         t.isMemberExpression(parentNode.callee) &&
         t.isIdentifier(parentNode.callee.property) &&
         parentNode.callee.property.name === 'format'
+}
+
+exports.isSpecialFunc = (parentNode, name) => {
+    return t.isCallExpression(parentNode) &&
+        t.isMemberExpression(parentNode.callee) &&
+        t.isIdentifier(parentNode.callee.object) &&
+        parentNode.callee.object.name === name
+}
+exports.shouldExcludeRoot = (rootPath) => {
+    let names = ['console', 'moment']
+    let parentNode = rootPath.parent;
+    if(exports.isMomentFormat(parentNode)){
+        return true;
+    }
+    return names.some((name) => {
+        return exports.isSpecialFunc(parentNode, name)
+    })
+
 }
 
 exports.parseStr = (str) => {

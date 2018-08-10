@@ -7,6 +7,7 @@ cases/
 logs/
 out/
 resource/
+locales/
 package-lock.json
 
 
