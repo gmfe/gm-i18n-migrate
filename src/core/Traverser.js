@@ -87,17 +87,17 @@ class Traverser {
                 .filter((key) => key.startsWith('KEY'));
             let values = keys.map((key) => baseJSON[key]);
 
-            let baseKey = keyStrategy;
-            keyStrategy = {
+            class BaseJsonKeyStrategy extends KeyStrategy{
                 get({ template }) {
                     let i = values.indexOf(template)
                     if (i === -1) {
-                        return baseKey.get({ template });
+                        return super.get({ template });
                     }
                     util.log(`模板「${template}」复用KEY「${keys[i]}」`);
                     return keys[i];
                 }
             }
+            keyStrategy = new BaseJsonKeyStrategy(initial);
         }
         this.ctx = {
             keyStrategy,
