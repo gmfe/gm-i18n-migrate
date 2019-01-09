@@ -36,12 +36,20 @@
         {
             "type": "node",
             "request": "launch",
-            "name": "测试sync",
+            "name": "测试pick-xlsx",
             "program": "${workspaceFolder}/bin/cli.js",
             "args": [
-                "sync",
-                "./cases/",
-                "--clean"
+                "pick-xlsx",
+            ]
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "测试merge-xlsx",
+            "program": "${workspaceFolder}/bin/cli.js",
+            "args": [
+                "merge-xlsx",
+                "./未翻译.xlsx"
             ]
         }
     ]
