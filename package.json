@@ -2,7 +2,7 @@
   "name": "gm-i18n-migrate",
   "version": "0.0.11",
   "description": "a tool for migrate to i18n",
-  "main": "lib/index.js",
+  "main": "src/index.js",
   "directories": {
     "test": "test"
   },

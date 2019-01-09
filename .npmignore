@@ -2,7 +2,6 @@
 .vscode
 .DS_Store
 test/
-src/
 cases/
 logs/
 out/
