@@ -35,6 +35,36 @@ class FileHelper {
   getResourceFilePath (filaname) {
     return p.join(resourceDir, filaname)
   }
+  getJSON (path) {
+    let json = {}
+    if (fs.existsSync(path)) {
+      json = fs.readJSONSync(path)
+    }
+    return json
+  }
+  getDefaultTransJSONPath () {
+    return this.getEnJSONPath()
+  }
+  getEnJSONPath () {
+    return this.getLanguageJSONPaths()[2]
+  }
+  getCnJSON () {
+    return fs.readJSONSync(this.getCnJSONPath())
+  }
+  getEnJSON () {
+    return fs.readJSONSync(this.getEnJSONPath())
+  }
+  getCnJSONPath () {
+    return this.getLanguageJSONPaths()[0]
+  }
+  getLanguageJSONPaths () {
+    let jsonpaths = ['./locales/zh/default.json', './locales/zh-HK/default.json', './locales/en/default.json']
+    // 不存在js目录 则为库
+    if (!fs.existsSync('./js')) {
+      jsonpaths = ['./locales/lng/zh.json', './locales/lng/zh-HK.json', './locales/lng/en.json']
+    }
+    return jsonpaths
+  }
   writeSourceMap (content) {
     this.writeResource(souceMapFileName, content)
   }

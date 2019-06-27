@@ -23,24 +23,25 @@ program
 program
   .command('sync [paths...]')
   .option('--clean', '同时清除语言包JSON文件中多余的key')
+  .option('--lib', '库文件的多语')
   .option('--jsonpath <path>', '指定语言包JSON文件的位置并覆盖(默认输出覆盖./locales/en(cn))/default.json)')
   .description('提取指定paths中的i18n信息，同步到对应jsonpath的多语文件')
   .action((paths, cmd) => {
     sync(paths, cleanArgs(cmd))
   })
 program
-  .command('pick-xlsx')
+  .command('pick-xlsx [jsonPath]')
+  .option('--type <type>', '全部词条生成excel')
   .description('将未翻译的词条生成excel')
-  .action(() => {
-    pickToXlsx(undefined)
+  .action((jsonPath, cmd) => {
+    pickToXlsx(jsonPath, cleanArgs(cmd))
   })
 
 program
-  .command('merge-xlsx <path>')
-  .option('--out <xlsxPath>', '指定输出xlsx位置')
+  .command('merge-xlsx [xlsxPath] [jsonPath]')
   .description('将excel文件合并到多语文件')
-  .action((xlsxPath, cmd) => {
-    mergeFromXlsx(xlsxPath, cleanArgs(cmd))
+  .action((xlsxPath, jsonPath, cmd) => {
+    mergeFromXlsx(xlsxPath, jsonPath, cleanArgs(cmd))
   })
 
 program

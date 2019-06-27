@@ -13,12 +13,12 @@
         {
             "type": "node",
             "request": "launch",
-            "name": "启动",
+            "name": "测试sync",
             "program": "${workspaceFolder}/bin/cli.js",
+            "cwd": "/Users/realwate/develop/workspace/front-end/gm_static_bshop",
             "args": [
-                "scan",
-                "./cases/",
-                "--rewrite"
+                "sync",
+                "./js"
             ]
         },
         {

@@ -1,6 +1,6 @@
 {
   "name": "gm-i18n-migrate",
-  "version": "0.0.12",
+  "version": "1.0.0",
   "description": "a tool for migrate to i18n",
   "main": "src/index.js",
   "directories": {
@@ -43,8 +43,10 @@
     "commander": "^2.13.0",
     "fs-extra": "^6.0.1",
     "glob": "^7.1.2",
+    "opencc": "^1.0.5",
     "recast": "^0.15.0",
-    "xlsx": "^0.13.2"
+    "xlsx": "^0.13.2",
+    "xlsx-style": "^0.8.13"
   },
   "devDependencies": {
     "babel-cli": "^6.2.0",

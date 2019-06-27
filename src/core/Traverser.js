@@ -65,10 +65,7 @@ class Traverser {
   constructor (options = {}) {
     this.sourcemapData = {}
     this.extraKeys = {}
-    this.changedCount = 0
-    this.newKeys = []
-    this.modifiedKeys = []
-    this.removedKeys = []
+    this.modifiedSet = new Set()
     this.options = options
     this.setup()
   }
@@ -105,49 +102,55 @@ class Traverser {
     }
   }
 
-  calcDiff (oldJSON, scanedJSON, options) {
-    // 不能直接覆盖 因为 插值情况newJSON拿不到模板
-    if (options.clean) {
-      Object.keys(oldJSON).forEach((key) => {
-        if (!scanedJSON.hasOwnProperty(key)) {
-          util.log(`「删除」 ${key}`)
-          this.removedKeys.push(key)
-        }
-      })
-    }
-
+  syncJSON (oldJSON, scanedJSON, options) {
+    let result = {}
     Object.keys(scanedJSON).forEach((key) => {
-      if (!oldJSON.hasOwnProperty(key)) {
-        // 添加新的
-        if (!scanedJSON[key]) {
-          let tpl = key// 默认设置为key
-          const sep = this.options.nsSeparator
-          if (key.includes(sep)) {
-            // __视为ns分割符 取最后一个
-            tpl = key.split(sep).slice(-1)[0]
-          }
-          scanedJSON[key] = tpl
-        }
-        // 新增的key
-        util.log(`「新增」 ${key}:${scanedJSON[key]}`)
-        this.newKeys.push([key, scanedJSON[key]])
-      } else if (oldJSON[key] !== scanedJSON[key] && // 修改已有的
-                scanedJSON[key]) { // 如果有注释设置了tpl
-        util.log(`「修改」 ${key}:${scanedJSON[key]}`)
-        this.modifiedKeys.push([key, scanedJSON[key]])
+      if (oldJSON[key] && !this.modifiedSet.has(key)) {
+        // 词条没有更新 复用旧的翻译
+        result[key] = oldJSON[key]
+      } else {
+        result[key] = scanedJSON[key]
       }
     })
+    return result
   }
-
-  syncJSON (oldJSON, options) {
-    if (options.clean) {
-      for (let removedKey of this.removedKeys) {
-        delete oldJSON[removedKey]
+  removeDuplicate (json) {
+    let result = {}
+    Object.keys(json).forEach((key) => {
+      let val = json[key]
+      if (key !== val) {
+        result[key] = val
       }
-    }
-    for (let [key, val] of this.newKeys.concat(this.modifiedKeys)) {
-      oldJSON[key] = val
-    }
+    })
+    return result
+  }
+  calcScanedJSON (scanedJSON, cnJSON) {
+    // 先处理下 scanedJSON
+    Object.keys(scanedJSON).forEach((key) => {
+      let val = scanedJSON[key]
+      let cnVal = cnJSON[key]
+      if (!val) {
+        // 同一个key 如果没设置tpl 有旧的用旧的 没有设为默认
+        let tpl = cnVal
+        if (!tpl) {
+          tpl = key
+          const sep = this.options.nsSeparator
+          if (key.includes(sep)) {
+          // __视为ns分割符 取最后一个
+            tpl = key.split(sep).slice(-1)[0]
+          }
+        }
+        scanedJSON[key] = tpl
+      }
+    })
+    Object.keys(cnJSON).forEach((key) => {
+      let val = cnJSON[key]
+      let scanedValue = scanedJSON[key]
+      // 扫描出来的dynamic不等于旧的 说明更新了 对应的翻译也要重置
+      if (scanedValue && scanedValue !== val) {
+        this.modifiedSet.add(key)
+      }
+    })
   }
   syncJSONWithPath (options) {
     if (!Array.isArray(options.jsonpath)) {
@@ -157,19 +160,41 @@ class Traverser {
     // scanedJSON 没有注释则 tpl为''
     let scanedJSON = this.getLanguageFromSourcemap(this.extraKeys)
 
-    let cnPath = paths[0]
-    let cnJSON = fs.readJSONSync(cnPath)
-    // 计算出与中文多语的差异
-    this.calcDiff(cnJSON, scanedJSON, options)
+    let cnPath = paths.shift() // 第一个是中文多语
+    let hkPath = paths.shift() // 第二个是hk繁体
+    let cnJSON = fileHelper.getJSON(cnPath)
+
+    // 通过脚本扫描，各个多语文件之间的状态是一致的。一改具改 不应该手动的改动多语文件(静态的词条可以)
+    // 根据 cnJSON 补充 scanedJSON
+    this.calcScanedJSON(scanedJSON, cnJSON)
+
+    util.log(`扫描到词条数: ${Object.keys(scanedJSON).length}`)
+    // 从扫到的json中去掉冗余的，输出到中文
+    let simpleScanedJSON = this.removeDuplicate(scanedJSON)
+    fs.outputJSONSync(cnPath, simpleScanedJSON)
+
     util.log('')
     for (let path of paths) {
       // 将差异同步到多语文件
       util.log(`开始同步到多语文件 ${path}`)
-      let oldJSON = fs.readJSONSync(path)
-      this.syncJSON(oldJSON, options)
-      fs.outputJSONSync(path, oldJSON)
+
+      let oldJSON = fileHelper.getJSON(path)
+      let result = this.syncJSON(oldJSON, scanedJSON, options)
+      fs.outputJSONSync(path, result)
     }
-    util.log('')
+    // bshop 生成繁体
+    if (fs.existsSync('./js/register') && fs.existsSync('./js/cmskey')) {
+      const s2hk = require('./s2hk')
+      util.log(`生成繁体${hkPath}`)
+      let hkJSON = {}
+      Object.keys(scanedJSON).forEach((key) => {
+        let val = scanedJSON[key]
+        hkJSON[key] = s2hk(val)
+      })
+      fs.outputJSONSync(hkPath, hkJSON)
+    }
+
+    util.log('done')
   }
   syncResource (files, options) {
     const {
@@ -183,21 +208,8 @@ class Traverser {
       this.syncJSONWithPath(options)
     } else {
       // 默认同步 ./locales/zh/default.json ./locales/en/default.json
-      options.jsonpath = ['./locales/zh/default.json', './locales/en/default.json']
+      options.jsonpath = fileHelper.getLanguageJSONPaths()
       this.syncJSONWithPath(options)
-
-      // 第一次迁移时同步sourcemap与语言包
-      // let sourcemap = fileHelper.getSourceMapContent();
-      // if (!sourcemap) {
-      //     return;
-      // }
-
-      // let sourceData = sourcemap.data;
-      // this.syncJSON(sourceData,this.extraKeys,options)
-      // if (this.changedCount > 0) {
-      //     this.writeLang(sourceData);
-      //     fileHelper.writeSourceMap(sourcemap);
-      // }
     }
   }
   addKey (path, key, tpl) {
@@ -350,11 +362,6 @@ class Traverser {
     }
     // 映射文件
     fileHelper.writeSourceMap(toWriteSouceMap)
-  }
-  get changedKeys () {
-    return {
-      count: this.modifiedKeys.length + this.newKeys.length + this.removedKeys.length
-    }
   }
   get keyLen () {
     return Object.keys(this.sourcemapData).length

@@ -11,12 +11,15 @@ exports.parentPathHasTransformed = (path) => {
   return exports.hasTransformedPath(path.parentPath)
 }
 exports.hasTransformedPath = (path) => {
-  if (t.isCallExpression(path.node) &&
-        t.isMemberExpression(path.node.callee)) {
-    let name = path.node.callee.object.name
-    let fn = path.node.callee.property.name
-    if (`${name}.${fn}` === config.callStatement) {
-      return true
+  if (t.isCallExpression(path.node)) {
+    if (t.isMemberExpression(path.node.callee)) {
+      let name = path.node.callee.object.name
+      let fn = path.node.callee.property.name
+      if (`${name}.${fn}` === config.callStatement) {
+        return true
+      }
+    } else if (t.isIdentifier(path.node.callee)) {
+      return path.node.callee.name === config.callStatement
     }
   }
   return false

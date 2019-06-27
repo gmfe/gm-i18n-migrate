@@ -6,6 +6,7 @@ const util = require('./util')
 let config = require('./config')
 const { exclude } = config
 const excelUtil = require('./excel')
+const fileHelper = require('./core/fileHelper')
 
 let base = fs.outputJSONSync.bind(fs)
 fs.outputJSONSync = function (file, obj, options) {
@@ -37,7 +38,6 @@ function resolvePaths (paths) {
   return filePaths
 }
 
-const DEFAULT_LANGUAGE_JSON_FILE = './locales/en/default.json'
 exports.scan = (paths, options) => {
   let start = Date.now()
   options = Object.assign(config, options)
@@ -53,17 +53,12 @@ exports.scan = (paths, options) => {
   util.log(`执行完毕！替换词条数${traverser.keyLen};时长：${time}s`)
 }
 exports.sync = (paths, options) => {
-  let start = Date.now()
+  // let start = Date.now()
   options = Object.assign(config, options)
   let filePaths = resolvePaths(paths)
   util.log(`开始扫描...文件数：${filePaths.length}\n`)
   let traverser = new Traverser(options)
   traverser.syncResource(filePaths, options)
-
-  let end = Date.now()
-  let time = ((end - start) / 1000).toFixed(2)
-  let { count } = traverser.changedKeys
-  util.log(`执行完毕！共修改词条数${count};时长：${time}s.`)
 }
 // 将多语文件合并到第一个文件
 exports.assign = (paths, options) => {
@@ -80,7 +75,7 @@ const mergeJSON = (jsons) => {
   let result = jsons.shift()
   for (let json of jsons) {
     Object.keys(json).forEach((key) => {
-      if (result.hasOwnProperty(key) && json[key] != null) {
+      if (result.hasOwnProperty(key) && json[key]) {
         result[key] = json[key]
       }
     })
@@ -98,17 +93,32 @@ exports.merge = (paths, options) => {
 // 提取多语文件中的英文or中文
 const pickJSON = (paths = [], options = {}) => {
   let result = {}
+  // 默认提取全部中文
   if (paths.length === 0) {
-    // 默认提取英文多语中的中文
-    paths = [DEFAULT_LANGUAGE_JSON_FILE]
+    // sync过保证 en和cn的状态是同步的
+    let cnJson = fileHelper.getCnJSON()
+    let enJson = fileHelper.getEnJSON()
+    // 还原完整的cnjson
+    Object.keys(enJson).forEach((key) => {
+      if (!cnJson[key]) {
+        cnJson[key] = key
+      }
+    })
+    return cnJson
+  }
+  if (!Array.isArray(paths)) {
+    paths = [paths]
   }
   for (let path of paths) {
     let json = fs.readJSONSync(path)
     Object.entries(json)
       .forEach(([key, val]) => {
         switch (options.type) {
+          case 'all':
+            result[key] = val
+            break
           case 'en':
-            // 提取英文(没有中文)
+            // 提取没有中文的词条
             if (!util.hasChinese(val)) {
               result[key] = val
             }
@@ -165,19 +175,19 @@ exports.diff = (paths, options) => {
   util.log(`比较完毕，输出文件路径 ${outPath}`)
 }
 
-// 提取多语文件中未翻译的词条
-exports.pickToXlsx = (jsonPath) => {
-  let json = pickJSON(jsonPath)
+// 提取多语文件中有中文的词条
+exports.pickToXlsx = (jsonPath, options) => {
+  let json = pickJSON(jsonPath, options)
   excelUtil.jsonContent2Xlsx(json)
 }
 
-// 提取多语文件中未翻译的词条
-exports.mergeFromXlsx = (xlsxPath) => {
+// merge
+exports.mergeFromXlsx = (xlsxPath, jsonPath = fileHelper.getDefaultTransJSONPath()) => {
   let json = excelUtil.xlsx2JsonContent(xlsxPath)
-  let targetJSON = fs.readJSONSync(DEFAULT_LANGUAGE_JSON_FILE)
+  let targetJSON = fs.readJSONSync(jsonPath)
   let resultJSON = mergeJSON([targetJSON, json])
-  fs.outputJSONSync(DEFAULT_LANGUAGE_JSON_FILE, resultJSON)
-  util.log(`合并完毕，输出文件路径 ${DEFAULT_LANGUAGE_JSON_FILE}`)
+  fs.outputJSONSync(jsonPath, resultJSON)
+  util.log(`合并完毕，输出文件路径 ${jsonPath}`)
 }
 exports = {
   ...exports,
