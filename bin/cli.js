@@ -22,10 +22,8 @@ program
 
 program
   .command('sync [paths...]')
-  .option('--clean', '同时清除语言包JSON文件中多余的key')
   .option('--lib', '库文件的多语')
-  .option('--jsonpath <path>', '指定语言包JSON文件的位置并覆盖(默认输出覆盖./locales/en(cn))/default.json)')
-  .description('提取指定paths中的i18n信息，同步到对应jsonpath的多语文件')
+  .description('提取paths中的词条，同步到多语文件')
   .action((paths, cmd) => {
     sync(paths, cleanArgs(cmd))
   })

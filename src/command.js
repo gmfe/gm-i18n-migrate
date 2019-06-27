@@ -55,6 +55,9 @@ exports.scan = (paths, options) => {
 exports.sync = (paths, options) => {
   // let start = Date.now()
   options = Object.assign(config, options)
+  if (!paths || paths.length === 0) {
+    paths = fileHelper.getSyncPaths()
+  }
   let filePaths = resolvePaths(paths)
   util.log(`开始扫描...文件数：${filePaths.length}\n`)
   let traverser = new Traverser(options)

@@ -35,6 +35,12 @@ class FileHelper {
   getResourceFilePath (filaname) {
     return p.join(resourceDir, filaname)
   }
+  getSyncPaths () {
+    if (fs.existsSync('./js')) {
+      return ['./js']
+    }
+    return ['./src']
+  }
   getJSON (path) {
     let json = {}
     if (fs.existsSync(path)) {
