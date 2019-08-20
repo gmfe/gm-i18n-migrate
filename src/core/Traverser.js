@@ -1,7 +1,9 @@
 let util = require('../util')
 const fileHelper = require('./fileHelper')
 const fs = require('fs-extra')
-const t = require('babel-types')
+const t = require('@babel/types')
+const sh = require('shelljs')
+const s2hk = require('./s2hk')
 const initTransformer = require('../plugin/transformer')
 const scanPlugin = require('../plugin/scanPlugin')
 const syncPlugin = require('../plugin/syncPlugin')
@@ -14,6 +16,9 @@ const EXCLUDE_TYPE = {
   ImportDeclaration: true, // import语句中的字符串
   MemberExpression: true // 类似user['name']
 }
+const gmI18n = require('gm-i18n')
+const { isValidForeignLanguage, isTraditionalChinese, SUPPORT_FOREIGN_LANGUAGES } = gmI18n
+const p = require('path')
 
 function shouldExclude (path) {
   let type = path.parent.type
@@ -67,6 +72,7 @@ class Traverser {
     this.extraKeys = {}
     this.modifiedSet = new Set()
     this.options = options
+    this.hasError = false
     this.setup()
   }
   setup () {
@@ -101,8 +107,55 @@ class Traverser {
       commentStrategy: new CommentStrategy()
     }
   }
+  pick (files, options) {
+    const {
+      transformFile
+    } = initTransformer([syncPlugin(this)])
 
-  syncJSON (oldJSON, scanedJSON, options) {
+    files.forEach((filePath) => {
+      transformFile(filePath)
+    })
+    const { out: jsonDir } = options
+    let scanedJSON = this.getLanguageFromSourcemap(this.extraKeys)
+    const baseJSONPath = p.join(jsonDir, 'base.json')
+    // copy json 到 static_langauge
+    const cnJSON = fileHelper.getAppCnJSON()
+    const cnJSONPath = p.join(jsonDir, 'zh.json')
+    fs.outputJSONSync(baseJSONPath, scanedJSON)
+    fs.outputJSONSync(cnJSONPath, cnJSON)
+  }
+  update (jsonDir) {
+    const scanedJSON = fs.readJSONSync(p.join(jsonDir, './base.json'))
+    const cnJSON = fs.readJSONSync(p.join(jsonDir, 'zh.json'))
+    this.calcModified(scanedJSON, cnJSON)
+    this.updateJSONDirByScanedJSON(scanedJSON, jsonDir, cnJSON)
+  }
+  setError () {
+    this.hasError = true
+  }
+  check (files) {
+    const {
+      transformFile
+    } = initTransformer([syncPlugin(this, true)])
+    files.forEach((filePath) => {
+      transformFile(filePath)
+    })
+    if (this.hasError) {
+      process.exit(1)
+    }
+  }
+  sync (files, options) {
+    const {
+      transformFile
+    } = initTransformer([syncPlugin(this)])
+
+    files.forEach((filePath) => {
+      transformFile(filePath)
+    })
+
+    this.syncAppOrLibJSON()
+  }
+  syncJSON (oldJSON, scanedJSON) {
     let result = {}
     Object.keys(scanedJSON).forEach((key) => {
       if (oldJSON[key] && !this.modifiedSet.has(key)) {
@@ -118,100 +171,92 @@ class Traverser {
     let result = {}
     Object.keys(json).forEach((key) => {
       let val = json[key]
-      if (key !== val) {
+      // 去掉不必要的值
+      if (key !== val && val !== '' && !key.includes(this.options.nsSeparator)) {
         result[key] = val
       }
     })
     return result
   }
-  calcScanedJSON (scanedJSON, cnJSON) {
-    // 先处理下 scanedJSON
-    Object.keys(scanedJSON).forEach((key) => {
-      let val = scanedJSON[key]
-      let cnVal = cnJSON[key]
-      if (!val) {
-        // 同一个key 如果没设置tpl 有旧的用旧的 没有设为默认
-        let tpl = cnVal
-        if (!tpl) {
-          tpl = key
-          const sep = this.options.nsSeparator
-          if (key.includes(sep)) {
-          // __视为ns分割符 取最后一个
-            tpl = key.split(sep).slice(-1)[0]
-          }
-        }
-        scanedJSON[key] = tpl
-      }
-    })
+  calcModified (scanedJSON, cnJSON) {
+    // 理论上 cnJSON 只有 dynamic case
     Object.keys(cnJSON).forEach((key) => {
       let val = cnJSON[key]
       let scanedValue = scanedJSON[key]
       // 扫描出来的dynamic不等于旧的 说明更新了 对应的翻译也要重置
       if (scanedValue && scanedValue !== val) {
         this.modifiedSet.add(key)
+      } else if (scanedJSON.hasOwnProperty(key) && !scanedValue) {
+        // 不一定有 tpl 还原 val
+        scanedJSON[key] = val
       }
     })
   }
-  syncJSONWithPath (options) {
-    if (!Array.isArray(options.jsonpath)) {
-      options.jsonpath = [options.jsonpath]
+  updateJSONDirByScanedJSON (scanedJSON, jsonDir, cnJSON) {
+    const langauges = SUPPORT_FOREIGN_LANGUAGES.map(({ value }) => value)
+    for (let code of langauges) {
+      // 文件名就是code
+      const jsonPath = p.join(jsonDir, `${code}.json`)
+      // update 非中文
+      if (isValidForeignLanguage(code)) {
+        util.log(`Update 多语文件 ${jsonPath}`)
+        let resultJSON = {}
+        if (isTraditionalChinese(code)) {
+          Object.keys(scanedJSON).forEach((key) => {
+            let val = scanedJSON[key]
+            // 可能是 dynamic or namespace
+            if (!val) {
+              val = cnJSON[key] || key.split(this.options.nsSeparator).pop()
+            }
+            resultJSON[key] = s2hk(val)
+          })
+        } else {
+          let oldJSON = {}
+          if (fs.existsSync(jsonPath)) {
+            oldJSON = fs.readJSONSync(jsonPath)
+          }
+          resultJSON = this.syncJSON(oldJSON, scanedJSON)
+        }
+
+        fs.outputJSONSync(jsonPath, resultJSON)
+      }
     }
-    let paths = options.jsonpath
-    // scanedJSON 没有注释则 tpl为''
+  }
+  syncAppOrLibJSON () {
     let scanedJSON = this.getLanguageFromSourcemap(this.extraKeys)
 
-    let cnPath = paths.shift() // 第一个是中文多语
-    let hkPath = paths.shift() // 第二个是hk繁体
-    let cnJSON = fileHelper.getJSON(cnPath)
-
-    // 通过脚本扫描，各个多语文件之间的状态是一致的。一改具改 不应该手动的改动多语文件(静态的词条可以)
-    // 根据 cnJSON 补充 scanedJSON
-    this.calcScanedJSON(scanedJSON, cnJSON)
-
+    // - 需要 对比新旧 cnjson ，如果某个key对应的模板变化了，多语文件翻译置为空。
+    // - 生成xlsx时，需要获取到插值key对应的中文模板
+    const cnJSON = fileHelper.getAppCnJSON()
+    this.calcModified(scanedJSON, cnJSON)
     util.log(`扫描到词条数: ${Object.keys(scanedJSON).length}`)
-    // 从扫到的json中去掉冗余的，输出到中文
+    // 先更新zh
     let simpleScanedJSON = this.removeDuplicate(scanedJSON)
-    fs.outputJSONSync(cnPath, simpleScanedJSON)
+    fs.outputJSONSync(fileHelper.getAppCnJSONPath(), simpleScanedJSON)
 
-    util.log('')
-    for (let path of paths) {
-      // 将差异同步到多语文件
-      util.log(`开始同步到多语文件 ${path}`)
+    if (fileHelper.isLib()) {
+      // lib 更新其他语言
+      const jsonDir = fileHelper.getAppOrLibJSONDir()
+      let zhPath = p.join(jsonDir, 'zh.json')
+      let cnJSON = {}
+      if (fs.existsSync(zhPath)) {
+        cnJSON = fs.readJSONSync(zhPath)
+      }
 
-      let oldJSON = fileHelper.getJSON(path)
-      let result = this.syncJSON(oldJSON, scanedJSON, options)
-      fs.outputJSONSync(path, result)
-    }
-    // bshop 生成繁体
-    if (fs.existsSync('./js/register') && fs.existsSync('./js/cmskey')) {
-      const s2hk = require('./s2hk')
-      util.log(`生成繁体${hkPath}`)
-      let hkJSON = {}
-      Object.keys(scanedJSON).forEach((key) => {
-        let val = scanedJSON[key]
-        hkJSON[key] = s2hk(val)
-      })
-      fs.outputJSONSync(hkPath, hkJSON)
+      this.updateJSONDirByScanedJSON(scanedJSON, jsonDir, cnJSON)
+      // 更新 locales/index.js
+      const localIndexPath = './locales/index.js'
+      if (!fs.existsSync(localIndexPath)) {
+        const code = util.generateLocaleIndex()
+        util.log(`Update ${localIndexPath}`)
+        fs.outputFileSync(localIndexPath, code)
+        sh.exec(`npx --no-install eslint ${localIndexPath} --fix`)
+      }
     }
 
     util.log('done')
   }
-  syncResource (files, options) {
-    const {
-      transformFile
-    } = initTransformer([syncPlugin(this)])
 
-    files.forEach((filePath) => {
-      transformFile(filePath)
-    })
-    if (options.jsonpath) {
-      this.syncJSONWithPath(options)
-    } else {
-      // 默认同步 ./locales/zh/default.json ./locales/en/default.json
-      options.jsonpath = fileHelper.getLanguageJSONPaths()
-      this.syncJSONWithPath(options)
-    }
-  }
   addKey (path, key, tpl) {
     let val = util.getKeyInfo(path, tpl)
     let oldVal = this.extraKeys[key]

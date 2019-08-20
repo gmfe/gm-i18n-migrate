@@ -13,12 +13,21 @@
         {
             "type": "node",
             "request": "launch",
+            "name": "测试scan",
+            "program": "${workspaceFolder}/bin/cli.js",
+            "args": [
+                "scan",
+                "./cases/test-scan.js"
+            ]
+        },
+        {
+            "type": "node",
+            "request": "launch",
             "name": "测试sync",
             "program": "${workspaceFolder}/bin/cli.js",
-            "cwd": "/Users/realwate/develop/workspace/front-end/gm_static_bshop",
             "args": [
                 "sync",
-                "./js"
+                "./cases/test-sync.js"
             ]
         },
         {
@@ -40,6 +49,8 @@
             "program": "${workspaceFolder}/bin/cli.js",
             "args": [
                 "pick-xlsx",
+                "/Users/realwate/develop/workspace/front-end/gm_static_language/projects/bshop/json/en.json",
+                // "--type=all",
             ]
         },
         {
@@ -47,9 +58,33 @@
             "request": "launch",
             "name": "测试merge-xlsx",
             "program": "${workspaceFolder}/bin/cli.js",
+            // "cwd": "/Users/realwate/develop/workspace/front-end/gm_static_bshop",
             "args": [
                 "merge-xlsx",
-                "./未翻译.xlsx"
+                "./test.xls"
+            ]
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "测试assign-xlsx",
+            "program": "${workspaceFolder}/bin/cli.js",
+            "cwd": "/Users/realwate/develop/workspace/front-end/gm_static_driver",
+            "args": [
+                "assign-xlsx",
+                "./司机app未翻译.xlsx",
+                "./采购app未翻译.xlsx"
+            ]
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "测试 pick",
+            "program": "${workspaceFolder}/bin/cli.js",
+            "cwd": "/Users/realwate/develop/workspace/front-end/gm_static_bshop",
+            "args": [
+                "pick",
+                "--out=/Users/realwate/develop/workspace/front-end/gm_static_language/projects/bshop/json"
             ]
         }
     ]

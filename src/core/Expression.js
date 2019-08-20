@@ -6,7 +6,7 @@ let {
 
 let util = require('../util')
 const variableOperator = ['-', '*', '/']
-const t = require('babel-types')
+const t = require('@babel/types')
 const {
   VariableStrategy
 } = require('./strategy')

@@ -5,7 +5,6 @@ const {
   resourceDir,
   outputDir
 } = config
-
 const souceMapFileName = 'soucemap.json'
 const langFileName = 'zh-cn.json'
 
@@ -19,6 +18,9 @@ class FileHelper {
     fs.outputFileSync(filePath, rawCode)
   }
   formatFilePath (filePath) {
+    if (!filePath) {
+      return ''
+    }
     return filePath.split(this.basePath)[1]
   }
   getTransformFilePath (filePath) {
@@ -35,6 +37,15 @@ class FileHelper {
   getResourceFilePath (filaname) {
     return p.join(resourceDir, filaname)
   }
+  isApp () {
+    if (fs.existsSync('./js')) {
+      return true
+    }
+    return false
+  }
+  isLib () {
+    return !this.isApp()
+  }
   getSyncPaths () {
     if (fs.existsSync('./js')) {
       return ['./js']
@@ -48,29 +59,28 @@ class FileHelper {
     }
     return json
   }
-  getDefaultTransJSONPath () {
-    return this.getEnJSONPath()
-  }
-  getEnJSONPath () {
-    return this.getLanguageJSONPaths()[2]
-  }
-  getCnJSON () {
-    return fs.readJSONSync(this.getCnJSONPath())
-  }
-  getEnJSON () {
-    return fs.readJSONSync(this.getEnJSONPath())
-  }
-  getCnJSONPath () {
-    return this.getLanguageJSONPaths()[0]
-  }
-  getLanguageJSONPaths () {
-    let jsonpaths = ['./locales/zh/default.json', './locales/zh-HK/default.json', './locales/en/default.json']
-    // 不存在js目录 则为库
-    if (!fs.existsSync('./js')) {
-      jsonpaths = ['./locales/lng/zh.json', './locales/lng/zh-HK.json', './locales/lng/en.json']
+
+  getAppCnJSON () {
+    let cnPath = this.getAppCnJSONPath()
+    if (!fs.existsSync(cnPath)) {
+      return {}
     }
-    return jsonpaths
+    return fs.readJSONSync(cnPath)
   }
+  getAppCnJSONPath () {
+    // 兼容旧的路径
+    const jsonDir = this.getAppOrLibJSONDir()
+    const legacyPath = './locales/zh/default.json'
+    const newPath = `${jsonDir}/zh.json`
+    if (fs.existsSync(newPath) || !fs.existsSync(legacyPath)) {
+      return newPath
+    }
+    return legacyPath
+  }
+  getAppOrLibJSONDir () {
+    return './locales'
+  }
+
   writeSourceMap (content) {
     this.writeResource(souceMapFileName, content)
   }

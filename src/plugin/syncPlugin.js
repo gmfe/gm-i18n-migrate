@@ -18,9 +18,11 @@ function initVisitor (traverser) {
         }
       }
       if (node.value == undefined) {
-        util.warn('i18n函数key只能为StringLiteral', keyPath)
+        util.warn('t函数的key只能为字符串常量(StringLiteral)，请使用单引号或双引号包裹', keyPath)
+        traverser.setError()
         return
       }
+
       traverser.addKey(keyPath, node.value, tpl.trim())
     }
   }

@@ -52,8 +52,11 @@ exports.scan = (paths, options) => {
   let time = ((end - start) / 1000).toFixed(2)
   util.log(`执行完毕！替换词条数${traverser.keyLen};时长：${time}s`)
 }
+exports.check = (paths) => {
+  let traverser = new Traverser()
+  traverser.check(paths)
+}
 exports.sync = (paths, options) => {
-  // let start = Date.now()
   options = Object.assign(config, options)
   if (!paths || paths.length === 0) {
     paths = fileHelper.getSyncPaths()
@@ -61,8 +64,24 @@ exports.sync = (paths, options) => {
   let filePaths = resolvePaths(paths)
   util.log(`开始扫描...文件数：${filePaths.length}\n`)
   let traverser = new Traverser(options)
-  traverser.syncResource(filePaths, options)
+  traverser.sync(filePaths, options)
 }
+
+// 在业务项目根目录调用
+// 1. 生成 base.json 2. copy zh.json 到 options.out
+exports.pick = (options) => {
+  const paths = fileHelper.getSyncPaths()
+  let filePaths = resolvePaths(paths)
+  let traverser = new Traverser()
+  traverser.pick(filePaths, options)
+}
+// 在 gm_static_langauge 根目录调用
+exports.update = (options) => {
+  let traverser = new Traverser()
+  const jsonDir = p.resolve('.')
+  traverser.update(jsonDir)
+}
+
 // 将多语文件合并到第一个文件
 exports.assign = (paths, options) => {
   let result = {}
@@ -94,31 +113,24 @@ exports.merge = (paths, options) => {
   util.log(`合并完毕，输出文件路径 ${outPath}`)
 }
 // 提取多语文件中的英文or中文
-const pickJSON = (paths = [], options = {}) => {
+const pickJSON = (jsonPath, options = {}) => {
   let result = {}
-  // 默认提取全部中文
-  if (paths.length === 0) {
-    // sync过保证 en和cn的状态是同步的
-    let cnJson = fileHelper.getCnJSON()
-    let enJson = fileHelper.getEnJSON()
-    // 还原完整的cnjson
-    Object.keys(enJson).forEach((key) => {
-      if (!cnJson[key]) {
-        cnJson[key] = key
-      }
-    })
-    return cnJson
-  }
-  if (!Array.isArray(paths)) {
-    paths = [paths]
-  }
-  for (let path of paths) {
-    let json = fs.readJSONSync(path)
+  const jsonDir = p.dirname(jsonPath)
+  const baseJSON = fs.readJSONSync(p.join(jsonDir, 'base.json'))
+  // 还没经过sync生成
+  if (!fs.existsSync(jsonPath)) {
+    result = baseJSON
+  } else {
+    let json = fs.readJSONSync(jsonPath)
     Object.entries(json)
       .forEach(([key, val]) => {
         switch (options.type) {
-          case 'all':
-            result[key] = val
+          case 'cn':
+            // 提取中文
+            if (util.hasChinese(val)) {
+              result[key] = val
+            }
+
             break
           case 'en':
             // 提取没有中文的词条
@@ -127,24 +139,15 @@ const pickJSON = (paths = [], options = {}) => {
             }
             break
           default:
-            // 提取中文
-            if (util.hasChinese(val)) {
-              result[key] = val
-            }
+            // 提取全部
+            result[key] = val
             break
         }
       })
   }
+
   return result
 }
-
-exports.pick = (paths, options) => {
-  let result = pickJSON(paths, options)
-  let outPath = options.out || 'pick.json'
-  fs.outputJSONSync(outPath, result)
-  util.log(`pick完毕，输出文件路径 ${outPath}`)
-}
-
 // 比较两个资源文件，将差异输出到文件
 exports.diff = (paths, options) => {
   function compare (keys, map, json) {
@@ -178,14 +181,21 @@ exports.diff = (paths, options) => {
   util.log(`比较完毕，输出文件路径 ${outPath}`)
 }
 
-// 提取多语文件中有中文的词条
+// 导出excel
 exports.pickToXlsx = (jsonPath, options) => {
   let json = pickJSON(jsonPath, options)
-  excelUtil.jsonContent2Xlsx(json)
+  const jsonDir = p.dirname(jsonPath)
+  options.jsonDir = jsonDir
+  excelUtil.jsonContent2Xlsx(json, options)
+}
+
+// 多个xlsx合并为一个
+exports.assignToXlsx = (xlsxPaths, options) => {
+  excelUtil.assignXlsx(xlsxPaths, { excelPath: '合并输出.xlsx' })
 }
 
 // merge
-exports.mergeFromXlsx = (xlsxPath, jsonPath = fileHelper.getDefaultTransJSONPath()) => {
+exports.mergeFromXlsx = (xlsxPath, jsonPath) => {
   let json = excelUtil.xlsx2JsonContent(xlsxPath)
   let targetJSON = fs.readJSONSync(jsonPath)
   let resultJSON = mergeJSON([targetJSON, json])

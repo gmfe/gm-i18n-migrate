@@ -1,4 +1,4 @@
-const babel = require('babel-core')
+const babel = require('@babel/core')
 const recast = require('recast')
 
 let defaultOpts = {
@@ -6,34 +6,37 @@ let defaultOpts = {
     parser: recast.parse,
     plugins: [
       'asyncGenerators',
+      'bigInt',
       'classPrivateMethods',
       'classPrivateProperties',
       'classProperties',
-      'decorators',
       'decorators-legacy',
       'doExpressions',
       'dynamicImport',
       'exportDefaultFrom',
-      'exportExtensions',
       'exportNamespaceFrom',
+      'flow',
+      'flowComments',
       'functionBind',
       'functionSent',
       'importMeta',
+      'jsx',
+      'logicalAssignment',
       'nullishCoalescingOperator',
       'numericSeparator',
       'objectRestSpread',
       'optionalCatchBinding',
       'optionalChaining',
-      'pipelineOperator',
-      'throwExpressions',
-      'classConstructorCall',
-      'jsx'
+      ['pipelineOperator', { proposal: 'minimal' }],
+      'throwExpressions'
     ]
   },
   generatorOpts: {
     generator: recast.print
   },
-  babelrc: false
+  retainLines: true,
+  babelrc: false,
+  configFile: false
   // sourceMaps: true,
 }
 

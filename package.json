@@ -1,6 +1,6 @@
 {
   "name": "gm-i18n-migrate",
-  "version": "1.0.1",
+  "version": "2.0.1",
   "description": "a tool for migrate to i18n",
   "main": "src/index.js",
   "directories": {
@@ -37,14 +37,18 @@
   },
   "homepage": "https://github.com/gmfe/gm-i18n-migrate#readme",
   "dependencies": {
+    "@babel/core": "^7.5.5",
+    "@babel/generator": "^7.5.0",
+    "@babel/template": "^7.4.4",
+    "@babel/types": "^7.5.5",
     "babel-code-frame": "^6.26.0",
-    "babel-core": "^6.26.3",
-    "babel-types": "^6.26.0",
     "commander": "^2.13.0",
     "fs-extra": "^6.0.1",
     "glob": "^7.1.2",
+    "gm-i18n": "^2.0.0",
     "opencc": "^1.0.5",
     "recast": "^0.15.0",
+    "shelljs": "^0.8.3",
     "xlsx": "^0.13.2",
     "xlsx-style": "^0.8.13"
   },
