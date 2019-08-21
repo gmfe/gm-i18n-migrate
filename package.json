@@ -1,6 +1,6 @@
 {
   "name": "gm-i18n-migrate",
-  "version": "2.0.1",
+  "version": "2.0.0-alpha.4",
   "description": "a tool for migrate to i18n",
   "main": "src/index.js",
   "directories": {
@@ -46,7 +46,6 @@
     "fs-extra": "^6.0.1",
     "glob": "^7.1.2",
     "gm-i18n": "^2.0.0",
-    "opencc": "^1.0.5",
     "recast": "^0.15.0",
     "shelljs": "^0.8.3",
     "xlsx": "^0.13.2",
