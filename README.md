@@ -17,5 +17,6 @@
 ## config
 在项目根路径新建`i18n.config.js`,具体配置项可[查看](https://github.com/gmfe/gm-i18n-migrate/blob/master/src/config/index.js)。其中`exclude`遵循`glob`语法，例如`demo/**`。
 
-**UPDATE:**
-这种情况也有完美的解决方案，具体阐述可以看[这篇文章](https://github.com/gmfe/Think/issues/46)
+## CHANGELOG
+### V2
+V2版本主要由 gm_static_language 项目来调用该脚本，各个业务项目不再需要手动调用。

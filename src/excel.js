@@ -4,37 +4,14 @@ const fs = require('fs-extra')
 const XLSX_NAME = '未翻译.xlsx'
 const util = require('./util')
 const p = require('path')
-const fileHelper = require('./core/fileHelper')
 
 const header = ['ID', '中文词条', '译文']
 const tips = [
-  ['注：在「译文」列参考「中文词条」填入翻译(ID列不要动)，其中${num}这样的符号表示变量，翻译的时候可根据语序移动位置，保持原有的格式就行'], // eslint-disable-line
+  ['注：在「译文」列参考「中文词条」填入翻译(ID列不要动)，其中${num}这样($后面没有空格！)的符号表示变量，翻译的时候可根据语序移动位置，保持原有的格式就行'], // eslint-disable-line
   ['例如：词条「推迟${num}天」 翻译成英文 「delay ${num} day(s)」'] // eslint-disable-line
 ]
-function jsonContent2Xlsx (json, options) {
-  let arrays = [
-    ...tips,
-    header
-  ]
-  let cnJSON = fileHelper.getCnJSON()
-  Object.entries(json)
-    .forEach(([key, value]) => {
-      let chinese = value
-      // 已经翻译过的词条找到对应的中文原文
-      if (!util.hasChinese(chinese)) {
-        if (cnJSON[key]) {
-          // 动态的在cnjson中
-          chinese = cnJSON[key]
-        } else {
-          chinese = key
-        }
-      }
-      if (key === value) {
-        key = ''
-      }
-      arrays.push([key, chinese, ''])
-    })
-
+function array2Xlsx (arrays, options) {
+  arrays.unshift(...tips, header)
   let ws = XLSX.utils.aoa_to_sheet(arrays)
   tips.forEach((item, index) => {
     ws[`A${index + 1}`].s = {
@@ -71,8 +48,56 @@ function jsonContent2Xlsx (json, options) {
   ]
   let wb = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(wb, ws, 'Sheet1')
-  xlsxStyle.writeFile(wb, XLSX_NAME)
-  util.log(`输出xlsx文件 ${XLSX_NAME}`)
+  let excelPath = options.out || XLSX_NAME
+  fs.ensureDirSync(p.dirname(excelPath))
+  xlsxStyle.writeFile(wb, excelPath)
+  util.log(`输出xlsx文件 ${excelPath}`)
+}
+function jsonContent2Xlsx (json, options) {
+  let arrays = []
+  let cnJSON = fs.readJSONSync(p.join(options.jsonDir, 'zh.json'))
+  Object.entries(json)
+    .forEach(([key, value]) => {
+      let chinese = value
+      // 已经翻译过的词条找到对应的中文原文
+      if (!util.hasChinese(value)) {
+        if (cnJSON[key]) {
+          // 动态的在cnjson中
+          chinese = cnJSON[key]
+        } else {
+          chinese = key
+        }
+      }
+      if (key === chinese) {
+        key = ''
+      }
+      arrays.push([key, chinese, value])
+    })
+  array2Xlsx(arrays, options)
+}
+function assignXlsx (xlsxPaths, options) {
+  let idSet = new Set()
+  let cnSet = new Set()
+  let total = []
+  for (let xlsxPath of xlsxPaths) {
+    let xlsxArray = xlsx2Array(xlsxPath)
+    xlsxArray.forEach((item, index) => {
+      let id = item[header[0]]
+      let cn = item[header[1]]
+      if (id && idSet.has(id)) {
+        // 不能存在相同id
+        throw new Error(`存在相同id${id}，请检查`)
+      }
+      if (cnSet.has(cn)) {
+        // 已经有对应中文了
+        return
+      }
+      total.push([id, cn, ''])
+      idSet.add(id)
+      cnSet.add(cn)
+    })
+  }
+  array2Xlsx(total, options)
 }
 function json2xlsx (jsonPath, options) {
   const json = fs.readJSONSync(jsonPath)
@@ -91,15 +116,18 @@ function xlsx2JSONAdapter (xlsxJSON) {
     return accm
   }, {})
 }
-
-function xlsx2JsonContent (xlsxPath) {
+function xlsx2Array (xlsxPath, options) {
   let wb = XLSX.readFile(xlsxPath)
   const sheetName = wb.SheetNames[0]
   const sheet = wb.Sheets[sheetName]
   const range = sheet['!ref'].replace('A1', `A${tips.length + 1}`)
   // !ref:"A1:D185"
-  let xlsxJSON = xlsxStyle.utils.sheet_to_json(sheet, { range })
-  let json = xlsx2JSONAdapter(xlsxJSON)
+  let xlsxArray = xlsxStyle.utils.sheet_to_json(sheet, { range })
+  return xlsxArray
+}
+function xlsx2JsonContent (xlsxPath) {
+  let xlsxArray = xlsx2Array(xlsxPath)
+  let json = xlsx2JSONAdapter(xlsxArray)
   return json
 }
 function xlsx2json (xlsxPath, options) {
@@ -110,5 +138,5 @@ function xlsx2json (xlsxPath, options) {
 }
 
 module.exports = {
-  json2xlsx, xlsx2json, xlsx2JsonContent, jsonContent2Xlsx
+  json2xlsx, xlsx2json, xlsx2JsonContent, jsonContent2Xlsx, assignXlsx
 }

@@ -59,7 +59,7 @@ function initVisitor (traverser) {
     Program: {
       enter (path) {
         let disableDirectives = []
-        path.container.tokens
+        path.container.comments
           .filter((token) => {
             return COMMENT_TYPE[token.type]
           })

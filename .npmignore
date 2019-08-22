@@ -1,5 +1,7 @@
 .gitignore
 .vscode
+.editorconfig
+.eslintrc.js
 .DS_Store
 test/
 cases/

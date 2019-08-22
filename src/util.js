@@ -1,8 +1,11 @@
 const config = require('./config')
 const fileHelper = require('./core/fileHelper')
-const recast = require('recast')
+const babel = require('@babel/core')
 const codeFrameColumns = require('babel-code-frame')
-const t = require('babel-types')
+const t = require('@babel/types')
+const gmI18n = require('gm-i18n')
+const { SUPPORT_LANGUAGES } = gmI18n
+
 exports.hasChinese = (text) => {
   return /[\u4e00-\u9fa5]/.test(text)
 }
@@ -10,6 +13,8 @@ exports.hasChinese = (text) => {
 exports.parentPathHasTransformed = (path) => {
   return exports.hasTransformedPath(path.parentPath)
 }
+// scope.getBinding('t')
+// scope <bindings- References
 exports.hasTransformedPath = (path) => {
   if (t.isCallExpression(path.node)) {
     if (t.isMemberExpression(path.node.callee)) {
@@ -19,7 +24,13 @@ exports.hasTransformedPath = (path) => {
         return true
       }
     } else if (t.isIdentifier(path.node.callee)) {
-      return path.node.callee.name === config.callStatement
+      const name = path.node.callee.name
+      if (name === config.callStatement) {
+        return true
+      } else if (name === 't') {
+        const binding = path.get('callee').scope.getBinding('t')
+        return binding.kind === 'module'
+      }
     }
   }
   return false
@@ -50,7 +61,7 @@ exports.shouldExcludeRoot = (rootPath) => {
 }
 
 exports.parseStr = (str) => {
-  return recast.parse(str).program.body[0]
+  return babel.parse(str).program.body[0]
 }
 exports.getKeyInfo = (path, template) => {
   return {
@@ -62,7 +73,7 @@ exports.getKeyInfo = (path, template) => {
 exports.getMetaFromPath = (path) => {
   path = exports.safePath(path)
   let info = {
-    filename: fileHelper.formatFilePath(path.hub.file.log.filename),
+    filename: fileHelper.formatFilePath(path.hub.file.opts.filename),
     source: exports.getSource(path),
     location: exports.getLocation(path)
   }
@@ -93,7 +104,7 @@ exports.getErrorMsg = (msg, path) => {
       line,
       column
     } = node.loc.start
-    extraInfo = `${path.hub.file.log.filename}:${line}:${column}
+    extraInfo = `${path.hub.file.opts.filename}:${line}:${column}
       ${codeFrameColumns(rawCode, line, column, { highlightCode: true })}`
   }
   const errMessage = `${msg}\n${extraInfo}`
@@ -146,3 +157,49 @@ exports.makeMap = (array) => {
     return accm
   }, {})
 }
+
+exports.generateLocaleIndex = () => {
+  const template = require('@babel/template').default
+  const generate = require('@babel/generator').default
+
+  const supportLangauges = SUPPORT_LANGUAGES.map(({ value }) => value)
+
+  const imports = []
+  const props = []
+  supportLangauges.forEach((code, i) => {
+    const varName = `lng${i + 1}`
+    imports.push(`import ${varName} from './${code}.json'`)
+    props.push(t.objectProperty(t.stringLiteral(code), t.identifier(varName)))
+  })
+
+  const buildLocale = template(`
+${imports.join('\n')}
+
+const moduleMap = %%modules%%
+
+let _language = 'zh'
+
+const setLocale = (lng) => {
+  _language = lng
+}
+
+const getLocale = (key) => {
+  const languageMap = moduleMap[_language] || moduleMap['zh']
+  let result = languageMap[key]
+  if(!result){
+    // __ 作为 namespace 分隔符
+    result = key.split('__').pop()
+  }
+  return result
+}
+
+export {getLocale, setLocale}
+`)
+
+  const script = buildLocale({
+    modules: t.objectExpression(props)
+  })
+  const result = generate(t.program(script), { auxiliaryCommentBefore: '此文件由脚本自动生成' })
+  return result.code
+}
+exports.generateLocaleIndex()
