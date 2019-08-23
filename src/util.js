@@ -1,6 +1,5 @@
 const config = require('./config')
 const fileHelper = require('./core/fileHelper')
-const babel = require('@babel/core')
 const codeFrameColumns = require('babel-code-frame')
 const t = require('@babel/types')
 const gmI18n = require('gm-i18n')
@@ -60,9 +59,6 @@ exports.shouldExcludeRoot = (rootPath) => {
   })
 }
 
-exports.parseStr = (str) => {
-  return babel.parse(str).program.body[0]
-}
 exports.getKeyInfo = (path, template) => {
   return {
     ...exports.getMetaFromPath(path),
@@ -202,4 +198,3 @@ export {getLocale, setLocale}
   const result = generate(t.program(script), { auxiliaryCommentBefore: '此文件由脚本自动生成' })
   return result.code
 }
-exports.generateLocaleIndex()

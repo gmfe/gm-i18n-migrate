@@ -1,5 +1,5 @@
 const config = require('../config')
-
+const sha1 = require('sha1')
 class Incrementer {
   constructor (initial = 1) {
     this.num = initial
@@ -18,6 +18,16 @@ class KeyStrategy extends Incrementer {
     return `KEY${this.count}`
   }
 }
+
+class HashKeyStrategy {
+  get ({ template }) {
+    if (!hasVariable(template)) {
+      return `${template}`
+    }
+    return sha1(template).slice(0, 6)
+  }
+}
+
 class VariableStrategy extends Incrementer {
   get () {
     return `VAR${this.count}`
@@ -31,7 +41,7 @@ class CommentStrategy {
     if (!hasVariable(template)) {
       return ''
     }
-    return `src:${sourceStr} => tpl:${template}`
+    return `tpl:${template}`
   }
 }
 
@@ -41,6 +51,7 @@ function hasVariable (str) {
 
 module.exports = {
   KeyStrategy,
+  HashKeyStrategy,
   VariableStrategy,
   CommentStrategy
 }

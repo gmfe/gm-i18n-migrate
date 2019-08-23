@@ -38,7 +38,8 @@
   "homepage": "https://github.com/gmfe/gm-i18n-migrate#readme",
   "dependencies": {
     "@babel/core": "^7.5.5",
-    "@babel/generator": "^7.5.0",
+    "@babel/generator": "^7.5.5",
+    "@babel/parser": "^7.5.5",
     "@babel/template": "^7.4.4",
     "@babel/types": "^7.5.5",
     "babel-code-frame": "^6.26.0",
@@ -47,7 +48,7 @@
     "glob": "^7.1.2",
     "gm-i18n": "^2.0.0",
     "opencc": "^1.0.5",
-    "recast": "^0.15.0",
+    "sha1": "^1.1.1",
     "shelljs": "^0.8.3",
     "xlsx": "^0.13.2",
     "xlsx-style": "^0.8.13"

@@ -1,6 +1,7 @@
 let config = require('../config')
 let util = require('../util')
-const recast = require('recast')
+const generate = require('@babel/generator').default
+const { parseStr } = require('./transformer')
 
 const COMMENT_TYPE = {
   CommentBlock: true,
@@ -81,7 +82,7 @@ function initVisitor (traverser) {
         const imported = path.get('body')
           .filter(p => p.isImportDeclaration())
           .map((p) => p.getSource().trim())
-        let importDeclaration = util.parseStr(config.importStatementStr)
+        let importDeclaration = parseStr(config.importStatementStr)
         let source = importDeclaration.source.value
         // 简单判断
         let hasImport = imported.some((importStr) => {
@@ -91,7 +92,7 @@ function initVisitor (traverser) {
           return
         }
 
-        let output = recast.print(path.hub.file.ast).code
+        let output = generate(path.hub.file.ast).code
         // 如果使用了i18n
         if (output.includes(config.callStatement)) {
           path.unshiftContainer('body', importDeclaration)

@@ -8,8 +8,7 @@ const {
 program
   .command('scan [paths...]')
   .option('--rewrite', '覆盖已有文件')
-  .option('--fixjsx', '尝试整体解析JSXText')
-  .option('--basejson <path>', '基于JSON中存在的插值KEY，尝试还原')
+  .option('--root', '贪婪模式')
   .description('扫描指定路径，提取多语文件并替换字符串为i18n')
   .action((paths, cmd) => {
     scan(paths, cleanArgs(cmd))

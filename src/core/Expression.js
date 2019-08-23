@@ -1,9 +1,9 @@
 let config = require('../config')
+const { parseExp } = require('../plugin/transformer.js')
 let {
   prefix,
   suffix
 } = config.interpolation
-
 let util = require('../util')
 const variableOperator = ['-', '*', '/']
 const t = require('@babel/types')
@@ -242,13 +242,17 @@ class Expression {
     let path = util.safePath(this.curRootPath)
 
     try {
-      let {
-        expression
-      } = util.parseStr(replaceStr)
+      const expression = parseExp(replaceStr)
+      // comment start has cache
+      expression.comments.forEach((comment) => {
+        comment.loc = undefined
+        delete comment.start
+        delete comment.end
+      })
       // 特殊情况处理 []
       // jsx
       if (Array.isArray(this.curRootPath)) {
-        if (t.isJSXElement(path)) {
+        if (t.isJSXElement(path) || t.isJSXFragment(path)) {
           path.node.children = [t.JSXExpressionContainer(expression)]
         } else {
           util.throwError('不能解析的数组path', path)

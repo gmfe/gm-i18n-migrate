@@ -3,14 +3,12 @@ const fs = require('fs-extra')
 
 let defaultConfig = {
   rewrite: false, // 覆盖文件
-  resourceDir: 'resource',
+  root: false, // 尽量找到表达式的 root 作为 i18nnxt.t 的模板
   outputDir: 'out',
   exclude: [],
   callStatement: 'i18next.t',
   importStatementStr: "import {i18next} from 'gm-i18n'\n",
   debug: false,
-  // key分隔符
-  keySeparator: '#',
   // 命名空间分割符
   nsSeparator: '__',
 

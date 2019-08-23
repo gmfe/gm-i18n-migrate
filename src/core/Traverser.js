@@ -2,16 +2,18 @@ let util = require('../util')
 const fileHelper = require('./fileHelper')
 const fs = require('fs-extra')
 const t = require('@babel/types')
+const sh = require('shelljs')
 const s2hk = require('./s2hk')
-const initTransformer = require('../plugin/transformer')
+const initTransformer = require('../plugin/transformer').init
 const scanPlugin = require('../plugin/scanPlugin')
 const syncPlugin = require('../plugin/syncPlugin')
 const {
-  KeyStrategy,
+  HashKeyStrategy,
   CommentStrategy
 } = require('./strategy')
 const Expression = require('./Expression')
 const EXCLUDE_TYPE = {
+  ExportNamedDeclaration: true, // export from
   ImportDeclaration: true, // import语句中的字符串
   MemberExpression: true // 类似user['name']
 }
@@ -76,32 +78,8 @@ class Traverser {
     this.setup()
   }
   setup () {
-    let initial = 1
-    let sourcemap = fileHelper.getSourceMapContent()
-    if (sourcemap) {
-      initial = sourcemap.meta.nextKeyNum
-    }
-    let keyStrategy = new KeyStrategy(initial)
-    if (this.options.basejson) {
-      // 修复插值情况KEY值不一致问题
-      // 从旧的多语文件中提取出该模板对应的KEY
-      let baseJSON = fs.readJSONSync(this.options.basejson)
-      let keys = Object.keys(baseJSON)
-        .filter((key) => key.startsWith('KEY'))
-      let values = keys.map((key) => baseJSON[key])
+    let keyStrategy = new HashKeyStrategy()
 
-      class BaseJsonKeyStrategy extends KeyStrategy {
-        get ({ template }) {
-          let i = values.indexOf(template)
-          if (i === -1) {
-            return super.get({ template })
-          }
-          util.log(`模板「${template}」复用KEY「${keys[i]}」`)
-          return keys[i]
-        }
-      }
-      keyStrategy = new BaseJsonKeyStrategy(initial)
-    }
     this.ctx = {
       keyStrategy,
       commentStrategy: new CommentStrategy()
@@ -130,7 +108,7 @@ class Traverser {
     let cnJSON = {}
     // 不存在 表示还没初始化过
     if (fs.existsSync(baseJSONPath)) {
-      scanedJSON = fs.readJSONSync()
+      scanedJSON = fs.readJSONSync(baseJSONPath)
       cnJSON = fs.readJSONSync(p.join(jsonDir, 'zh.json'))
     }
 
@@ -218,6 +196,21 @@ class Traverser {
   }
   syncAppOrLibJSON () {
     let scanedJSON = this.getLanguageFromSourcemap(this.extraKeys)
+    if (fileHelper.isLib()) {
+      // lib 更新其他语言
+      const jsonDir = fileHelper.getAppOrLibJSONDir()
+
+      this.updateJSONDirByScanedJSON(scanedJSON, jsonDir)
+      // 更新 locales/index.js
+      const localIndexPath = './locales/index.js'
+      if (!fs.existsSync(localIndexPath)) {
+        const code = util.generateLocaleIndex()
+        util.log(`Update ${localIndexPath}`)
+        fs.outputFileSync(localIndexPath, code)
+        sh.exec(`npx --no-install eslint ${localIndexPath} --fix`)
+      }
+      return
+    }
 
     // - 需要 对比新旧 cnjson ，如果某个key对应的模板变化了，多语文件翻译置为空。
     // - 生成xlsx时，需要获取到插值key对应的中文模板
@@ -227,27 +220,6 @@ class Traverser {
     // 先更新zh
     let simpleScanedJSON = this.removeDuplicate(scanedJSON)
     fs.outputJSONSync(fileHelper.getAppCnJSONPath(), simpleScanedJSON)
-
-    // TODO: 修改lib
-    // if (fileHelper.isLib()) {
-    //   // lib 更新其他语言
-    //   const jsonDir = fileHelper.getAppOrLibJSONDir()
-    //   let zhPath = p.join(jsonDir, 'zh.json')
-    //   let cnJSON = {}
-    //   if (fs.existsSync(zhPath)) {
-    //     cnJSON = fs.readJSONSync(zhPath)
-    //   }
-
-    //   this.updateJSONDirByScanedJSON(scanedJSON, jsonDir)
-    //   // 更新 locales/index.js
-    //   const localIndexPath = './locales/index.js'
-    //   if (!fs.existsSync(localIndexPath)) {
-    //     const code = util.generateLocaleIndex()
-    //     util.log(`Update ${localIndexPath}`)
-    //     fs.outputFileSync(localIndexPath, code)
-    //     sh.exec(`npx --no-install eslint ${localIndexPath} --fix`)
-    //   }
-    // }
 
     util.log('done')
   }
@@ -286,7 +258,6 @@ class Traverser {
     const {
       transformFile
     } = initTransformer([scanPlugin(this)])
-
     files.forEach((filePath) => {
       // 替换\t
       fileHelper.formatTabs(filePath)
@@ -294,7 +265,7 @@ class Traverser {
       // 替换为 i18n.t
       fileHelper.write(filePath, code)
     })
-    this.writeResourceByMerge()
+    sh.exec(`npx --no-install eslint ${files.join(' ')} --fix`, { silent: true })
   }
   buildExpression (rootPath) {
     let exp = new Expression(rootPath, this.ctx)
@@ -334,8 +305,9 @@ class Traverser {
     }
     // root 代表 expression的起点
     let rootPath
-    if (t.isStringLiteral(path) &&
-            this.options.shouldSingleReplace(path.node.value)) {
+    if (t.isStringLiteral(path) && (
+      this.options.shouldSingleReplace(path.node.value) || !this.options.root
+    )) {
       rootPath = path
     } else {
       rootPath = this.findRoot(path)
@@ -348,14 +320,14 @@ class Traverser {
     this.traverseRootPath(rootPath)
   }
   traverseJSXText (textPath) {
-    if (!this.options.fixjsx) {
+    if (!this.options.root) {
       // 默认独立解析
       return this.traverseRootPath(textPath)
     }
 
-    let jsxElement = textPath.find((p) => t.isJSXElement(p))
+    let jsxElement = textPath.find((p) => t.isJSXElement(p) || t.isJSXFragment(p))
     let childrenPaths = jsxElement.get('children')
-    let hasChildElement = childrenPaths.some((child) => t.isJSXElement(child))
+    let hasChildElement = childrenPaths.some((child) => t.isJSXElement(child) || t.isJSXFragment(child))
     if (!hasChildElement) {
       // 中文 + variable 的情况
       let hasChinese = childrenPaths.some((child) => t.isJSXText(child) && util.hasChinese(child.node.value))
@@ -401,29 +373,6 @@ class Traverser {
         accm[key] = o.template
         return accm
       }, {})
-  }
-  writeLang (sourcemap) {
-    let langResource = this.getLanguageFromSourcemap(sourcemap)
-    // 多语资源文件
-    fileHelper.writeLang(langResource)
-  }
-  writeResourceByMerge () {
-    let oldSourcemap = fileHelper.getSourceMapContent()
-    let toWriteSouceMap = this.sourcemapData
-    if (oldSourcemap) {
-      toWriteSouceMap = Object.assign(oldSourcemap.data, this.sourcemapData)
-    }
-
-    this.writeLang(toWriteSouceMap)
-    let nextKeyNum = this.ctx.keyStrategy.count
-    toWriteSouceMap = {
-      data: toWriteSouceMap,
-      meta: {
-        nextKeyNum
-      }
-    }
-    // 映射文件
-    fileHelper.writeSourceMap(toWriteSouceMap)
   }
   get keyLen () {
     return Object.keys(this.sourcemapData).length

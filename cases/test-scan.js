@@ -1,28 +1,7 @@
-import { t } from 'gm-i18n'
-// const t = require('dsa')
 
-const processTypeFilter = type => {
-  switch (type) {
-    case 1:
-      return '原料'
-    case 2:
-      return i18next.t('半成品')
-    default:
-      return ''
-  }
-}
+const str1 = '晨霞彩仗悬'
 
-const foo = () => {
-  var s = t('无法')
-  var oo = <>中国</>
-  console.log(s)
-}
-
-var twd = () => {
-  var t = '发'
-  console.log(t())
-}
-var s = () => {
-  var sd = `无法啥${'大的士费'}`
-  console.log('sa')
-}
+const num = 20
+const str2 = `他今年${num}岁了`
+const str3 = '今天是8月' + num + '号'
+const el = <>共{num}个订单</>

@@ -2,11 +2,8 @@ const p = require('path')
 const fs = require('fs-extra')
 let config = require('../config')
 const {
-  resourceDir,
   outputDir
 } = config
-const souceMapFileName = 'soucemap.json'
-const langFileName = 'zh-cn.json'
 
 class FileHelper {
   constructor () {
@@ -14,7 +11,7 @@ class FileHelper {
   }
   formatTabs (filePath) {
     let rawCode = String(fs.readFileSync(filePath))
-    rawCode = rawCode.replace(/\t/g, '    ')
+    rawCode = rawCode.replace(/\t/g, '  ')
     fs.outputFileSync(filePath, rawCode)
   }
   formatFilePath (filePath) {
@@ -27,16 +24,14 @@ class FileHelper {
     filePath = filePath.split(this.basePath)[1]
     return p.join(outputDir, filePath)
   }
-  getSourceMapContent () {
-    let path = this.getResourceFilePath(souceMapFileName)
-    if (fs.existsSync(path)) {
-      return fs.readJSONSync(path)
+
+  write (filePath, content) {
+    if (!config.rewrite) {
+      filePath = this.getTransformFilePath(filePath)
     }
-    return ''
+    fs.outputFileSync(filePath, content)
   }
-  getResourceFilePath (filaname) {
-    return p.join(resourceDir, filaname)
-  }
+
   isApp () {
     if (fs.existsSync('./js')) {
       return true
@@ -79,23 +74,6 @@ class FileHelper {
   }
   getAppOrLibJSONDir () {
     return './locales'
-  }
-
-  writeSourceMap (content) {
-    this.writeResource(souceMapFileName, content)
-  }
-  writeLang (content) {
-    this.writeResource(langFileName, content)
-  }
-  writeResource (filename, json) {
-    let resourcePath = this.getResourceFilePath(filename)
-    fs.outputJSONSync(resourcePath, json)
-  }
-  write (filePath, content) {
-    if (!config.rewrite) {
-      filePath = this.getTransformFilePath(filePath)
-    }
-    fs.outputFileSync(filePath, content)
   }
 }
 
