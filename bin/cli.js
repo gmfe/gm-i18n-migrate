@@ -73,7 +73,7 @@ function cleanArgs (cmd) {
     const key = o.long.replace(/^--/, '')
     // if an option is not present and Command has a method with the same name
     // it should not be copied
-    if (typeof cmd[key] !== 'function') {
+    if (typeof cmd[key] !== 'function' && cmd[key] !== undefined) {
       args[key] = cmd[key]
     }
   })

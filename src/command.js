@@ -18,15 +18,17 @@ fs.outputJSONSync = function (file, obj, options) {
   base(file, obj, options)
 }
 
-function resolvePaths (paths) {
+function resolvePaths (paths, isScan = false) {
   let filePaths = []
   for (let path of paths) {
     path = p.resolve(path)
     let stat = fs.statSync(path)
     if (stat.isDirectory()) {
-      let files = glob.sync(`${path}/**/*.{js,jsx}`, {
-        ignore: exclude.map(pattern => p.join(path, pattern))
-      })
+      const opts = {}
+      if (isScan) {
+        opts.ignore = exclude.map(pattern => p.join(path, pattern))
+      }
+      let files = glob.sync(`${path}/**/*.{js,jsx}`, opts)
       filePaths.push(...files)
     } else if (stat.isFile()) {
       filePaths.push(path)
@@ -42,7 +44,7 @@ exports.scan = (paths, options) => {
   let start = Date.now()
   options = Object.assign(config, options)
   util.log(`开始扫描文件...`)
-  let filePaths = resolvePaths(paths)
+  let filePaths = resolvePaths(paths, true)
 
   util.log(`正在替换和提取多语...文件数：${filePaths.length}`)
   let traverser = new Traverser(options)

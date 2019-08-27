@@ -65,6 +65,7 @@ function isRootParentPath (path) {
 
   return !!ROOT_PARENT_TYPES[node.type]
 }
+const nsSeparator = '__'
 
 class Traverser {
   constructor (options = {}) {
@@ -127,8 +128,8 @@ class Traverser {
   update (jsonDir) {
     const scanedJSON = fs.readJSONSync(p.join(jsonDir, './base.json'))
     const cnJSON = fs.readJSONSync(p.join(jsonDir, 'zh.json'))
-    this.calcModified(scanedJSON, cnJSON)
-    this.updateJSONDirByScanedJSON(scanedJSON, jsonDir, cnJSON)
+    this.adjustScanedJSON(scanedJSON, cnJSON)
+    this.updateJSONDirByScanedJSON(scanedJSON, jsonDir)
   }
   setError () {
     this.hasError = true
@@ -172,27 +173,14 @@ class Traverser {
     Object.keys(json).forEach((key) => {
       let val = json[key]
       // 去掉不必要的值
-      if (key !== val && val !== '' && !key.includes(this.options.nsSeparator)) {
+      if (key !== val && val !== '' && !key.includes(nsSeparator)) {
         result[key] = val
       }
     })
     return result
   }
-  calcModified (scanedJSON, cnJSON) {
-    // 理论上 cnJSON 只有 dynamic case
-    Object.keys(cnJSON).forEach((key) => {
-      let val = cnJSON[key]
-      let scanedValue = scanedJSON[key]
-      // 扫描出来的dynamic不等于旧的 说明更新了 对应的翻译也要重置
-      if (scanedValue && scanedValue !== val) {
-        this.modifiedSet.add(key)
-      } else if (scanedJSON.hasOwnProperty(key) && !scanedValue) {
-        // 不一定有 tpl 还原 val
-        scanedJSON[key] = val
-      }
-    })
-  }
-  updateJSONDirByScanedJSON (scanedJSON, jsonDir, cnJSON) {
+
+  updateJSONDirByScanedJSON (scanedJSON, jsonDir) {
     const langauges = SUPPORT_FOREIGN_LANGUAGES.map(({ value }) => value)
     for (let code of langauges) {
       // 文件名就是code
@@ -204,9 +192,9 @@ class Traverser {
         if (isTraditionalChinese(code)) {
           Object.keys(scanedJSON).forEach((key) => {
             let val = scanedJSON[key]
-            // 可能是 dynamic or namespace
             if (!val) {
-              val = cnJSON[key] || key.split(this.options.nsSeparator).pop()
+              // 还原 namespace 或 普通的情况
+              val = key.split(nsSeparator).pop()
             }
             resultJSON[key] = s2hk(val)
           })
@@ -228,35 +216,58 @@ class Traverser {
     // - 需要 对比新旧 cnjson ，如果某个key对应的模板变化了，多语文件翻译置为空。
     // - 生成xlsx时，需要获取到插值key对应的中文模板
     const cnJSON = fileHelper.getAppCnJSON()
-    this.calcModified(scanedJSON, cnJSON)
+    this.adjustScanedJSON(scanedJSON, cnJSON)
     util.log(`扫描到词条数: ${Object.keys(scanedJSON).length}`)
     // 先更新zh
     let simpleScanedJSON = this.removeDuplicate(scanedJSON)
     fs.outputJSONSync(fileHelper.getAppCnJSONPath(), simpleScanedJSON)
 
-    if (fileHelper.isLib()) {
-      // lib 更新其他语言
-      const jsonDir = fileHelper.getAppOrLibJSONDir()
-      let zhPath = p.join(jsonDir, 'zh.json')
-      let cnJSON = {}
-      if (fs.existsSync(zhPath)) {
-        cnJSON = fs.readJSONSync(zhPath)
-      }
+    // TODO: 修改lib
+    // if (fileHelper.isLib()) {
+    //   // lib 更新其他语言
+    //   const jsonDir = fileHelper.getAppOrLibJSONDir()
+    //   let zhPath = p.join(jsonDir, 'zh.json')
+    //   let cnJSON = {}
+    //   if (fs.existsSync(zhPath)) {
+    //     cnJSON = fs.readJSONSync(zhPath)
+    //   }
 
-      this.updateJSONDirByScanedJSON(scanedJSON, jsonDir, cnJSON)
-      // 更新 locales/index.js
-      const localIndexPath = './locales/index.js'
-      if (!fs.existsSync(localIndexPath)) {
-        const code = util.generateLocaleIndex()
-        util.log(`Update ${localIndexPath}`)
-        fs.outputFileSync(localIndexPath, code)
-        sh.exec(`npx --no-install eslint ${localIndexPath} --fix`)
-      }
-    }
+    //   this.updateJSONDirByScanedJSON(scanedJSON, jsonDir)
+    //   // 更新 locales/index.js
+    //   const localIndexPath = './locales/index.js'
+    //   if (!fs.existsSync(localIndexPath)) {
+    //     const code = util.generateLocaleIndex()
+    //     util.log(`Update ${localIndexPath}`)
+    //     fs.outputFileSync(localIndexPath, code)
+    //     sh.exec(`npx --no-install eslint ${localIndexPath} --fix`)
+    //   }
+    // }
 
     util.log('done')
   }
+  // 补充插值到 scanedJSON
+  adjustScanedJSON (scanedJSON, cnJSON) {
+    // 理论上 cnJSON 只有 dynamic case (历史原因 可能有 namespace)
+    Object.keys(cnJSON).forEach((key) => {
+      let val = cnJSON[key]
+      let scanedValue = scanedJSON[key]
+      // 扫描出来的dynamic不等于旧的 说明更新了 对应的翻译也要重置
+      if (scanedValue && scanedValue !== val) {
+        this.modifiedSet.add(key)
+      } else if (scanedJSON.hasOwnProperty(key) && !scanedValue && !key.includes(nsSeparator)) {
+        // 还原插值情况的 tpl
+        scanedJSON[key] = val
+      }
+    })
 
+    // Object.keys(scanedJSON).forEach((key) => {
+    //   let val = scanedJSON[key]
+    //   if (!val) {
+    //     // 还原 namespace 或 普通的情况
+    //     scanedJSON[key] = cnJSON[key] || key.split(nsSeparator).pop()
+    //   }
+    // })
+  }
   addKey (path, key, tpl) {
     let val = util.getKeyInfo(path, tpl)
     let oldVal = this.extraKeys[key]
