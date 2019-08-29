@@ -2,7 +2,6 @@ let util = require('../util')
 const fileHelper = require('./fileHelper')
 const fs = require('fs-extra')
 const t = require('@babel/types')
-const sh = require('shelljs')
 const s2hk = require('./s2hk')
 const initTransformer = require('../plugin/transformer')
 const scanPlugin = require('../plugin/scanPlugin')
@@ -126,8 +125,15 @@ class Traverser {
     fs.outputJSONSync(cnJSONPath, cnJSON)
   }
   update (jsonDir) {
-    const scanedJSON = fs.readJSONSync(p.join(jsonDir, './base.json'))
-    const cnJSON = fs.readJSONSync(p.join(jsonDir, 'zh.json'))
+    let baseJSONPath = p.join(jsonDir, './base.json')
+    let scanedJSON = {}
+    let cnJSON = {}
+    // 不存在 表示还没初始化过
+    if (fs.existsSync(baseJSONPath)) {
+      scanedJSON = fs.readJSONSync()
+      cnJSON = fs.readJSONSync(p.join(jsonDir, 'zh.json'))
+    }
+
     this.adjustScanedJSON(scanedJSON, cnJSON)
     this.updateJSONDirByScanedJSON(scanedJSON, jsonDir)
   }
