@@ -130,7 +130,7 @@ class Traverser {
     let cnJSON = {}
     // 不存在 表示还没初始化过
     if (fs.existsSync(baseJSONPath)) {
-      scanedJSON = fs.readJSONSync()
+      scanedJSON = fs.readJSONSync(p.join(jsonDir, './base.json'))
       cnJSON = fs.readJSONSync(p.join(jsonDir, 'zh.json'))
     }
 
