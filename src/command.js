@@ -28,7 +28,7 @@ function resolvePaths (paths, isScan = false) {
       if (isScan) {
         opts.ignore = exclude.map(pattern => p.join(path, pattern))
       }
-      let files = glob.sync(`${path}/**/*.{js,jsx}`, opts)
+      let files = glob.sync(`${path}/**/*.{js,jsx,tsx}`, opts)
       filePaths.push(...files)
     } else if (stat.isFile()) {
       filePaths.push(path)
