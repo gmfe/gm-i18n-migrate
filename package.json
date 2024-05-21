@@ -1,6 +1,6 @@
 {
   "name": "gm-i18n-migrate",
-  "version": "2.2.0",
+  "version": "2.4.0",
   "description": "a tool for migrate to i18n",
   "main": "src/index.js",
   "directories": {
